@@ -37,7 +37,13 @@ We coordinated with SBSPRP managers through a series of meetings to confirm targ
 We used power analyses and simulations informed by our existing dataset to explore the feasibility of decreasing survey effort using a subsetting protocol. We 1) researched approaches for decreasing survey effort by subsetting the sites, and 2) evaluated the effect of the subset protocol on our ability to detect trends (similar to power analysis performed previously, which evaluated our ability to detect trends with fewer surveys over time).
 
 ###Survey Cost
-The three-year average of annual spending for 2015-2017 is \$84371.46. We sought a survey protocol that could be implemented on an annual budget of \$50000.00, which represents a `r round((84371.46-50000)/84371.46*100,0)`% decrease in survey costs. See Appendix I for a previous project budget. We expect that the following costss would remain the same with a new survey protocol: data analysis, data management, meetings, project management, and report writing, as well as supplies, mileage and tolls, and conferences. Reduced costs would be reflected in fewer staff hours spent on data entry and field work. 
+```{r, echo=FALSE}
+cost.goal<-50000
+new.staff.hrs<-round((cost.goal - (91144.12-(2377.25+394)*0.7*mean(c(17.77*1.284,24.62*1.284))))/mean(c(17.77*1.284,24.62*1.284)),0)
+new.staff.hrs.cost<-round(cost.goal - (91144.12-(2377.25+394)*0.7*mean(c(17.77*1.284,24.62*1.284))),2)
+```
+
+The three-year average of annual spending for 2015-2017 is \$84371.46. We sought a survey protocol that could be implemented on an annual budget of \$`r cost.goal`, which represents a `r round((84371.46-cost.goal)/84371.46*100,0)`% decrease in survey costs. See Appendix I for a previous project budget. We expect that the following costs would remain the same with a new survey protocol: data analysis, data management, meetings, project management, and report writing, as well as supplies, mileage and tolls, and conferences. Reduced costs would be reflected in fewer staff hours spent on data entry and field work. Past data entry required 394 hours, while field work required 2377.25 hours each year. Roughly 30% of these hours can be fulfilled by interns. The rate for interns will remain at a minimum of $500 per month. Achieving the goal for cost decreases requires that staff hours on field work and data entry are decreased to `r new.staff.hrs` total hours, which would cost \$`r new.staff.hrs.cost` with overhead. Maintaining the ratio of field work hours to data entry hours indicates that staff would need to spend `r new.staff.hrs*0.858` hours on fieldwork and `r new.staff.hrs*0.142` hours on data entry, which represents a `r round(((2377.25+394)-new.staff.hrs)/(2377.25+394)*100,0)`% reduction in field work hours.
 
 ###Trend Detection
 
