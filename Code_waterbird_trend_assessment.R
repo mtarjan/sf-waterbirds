@@ -14,6 +14,7 @@ library(tidyr) ##required for spread
 
 ##LOAD SALT POND DATA
 source('Code_load_waterbird_data_13Dec2018.R')
+head(dat.complete)
 
 ##species counts by survey and pond
 dat.pond<-dat.complete %>% group_by(year, season.yr, MonthYear, Season, Pond, SpeciesCode) %>% summarise(abun=sum(TotalAbundance)) %>% data.frame()

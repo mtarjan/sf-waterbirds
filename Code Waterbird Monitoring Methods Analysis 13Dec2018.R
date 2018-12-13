@@ -3,49 +3,44 @@
 ##Prepared for Cheryl Strong, USFWS
 ##February 5, 2018
 
-library(RODBC)
+#library(RODBC)
 library(dplyr)
 library(ggplot2)
-library(stringr)
+#library(stringr)
 library(tidyr) ##required for spread
 
-wb<-"S:/Science/Waterbird/Databases - enter data here!/Cargill Pond Surveys/USGS data from Cheryl 29Jan2018/USGS_SFBBO_pond_data_26Feb2018.accdb"
+source('Code_load_waterbird_data_13Dec2018.R')
+head(dat.complete)
 
-con<-odbcConnectAccess2007(wb) ##open connection to database
+##SUBSET SURVEY SITES
+##addition in Dec 2018
 
-sqlTables(con, tableType="TABLE")$TABLE_NAME ##Get names of available tables
+##species counts by survey (i.e. monthyear) and pond
+dat.pond<-dat.complete %>% group_by(year, season.yr, MonthYear, Season, Pond, StandardGuild) %>% summarise(abun=sum(TotalAbundance)) %>% data.frame()
 
-qry<-
-  "SELECT d.MonthYear, d.Season, d.YearID, d.CountDate, d.Pond, d.Agency, d.PondGrid, d.SpeciesCode, d.TotalAbundance, s.StandardGuild 
-  FROM SBSPBirdData_IncludesNoBirdPondCounts AS d
-  LEFT OUTER JOIN SpeciesCodes AS s ON d.SpeciesCode = s.SpeciesCode" 
+##select representative historical abundances by pond. for now just use one survey and a few species. eventually need to do this by guild
+dat.pond<-subset(dat.pond, MonthYear=="2016-12-01 PST" & StandardGuild %in% c("HERON", "MEDSHORE","FISHEAT","DABBLER","DIVER","GULL","TERN","EAREDGR","SMSHORE","PHAL"))
 
+sub.n<-round(length(levels(dat.pond$Pond))*0.5/length(unique(dat.pond$StandardGuild)),0) ##number of ponds to sample for each species = total number of ponds * fraction of ponds to survey / number of species
 
-dat<-sqlQuery(con, qry); head(dat) ##import the queried table
+ponds.subset<-dim(0)
+for (j in 1:length(unique(dat.pond$StandardGuild))) {
+  sp.temp<-unique(dat.pond$StandardGuild)[j]
+  dat.temp<-subset(dat.pond, StandardGuild==sp.temp)
+  ##natural log-total as the continuous stratification weight to even the sample selection probabilities (Wood et al 2010)
+  dat.temp$ln.abun<-log(dat.temp$abun)
+  sample.temp<-as.character(sample(dat.temp$Pond, size=sub.n, replace=F, prob=dat.temp$ln.abun)) ##randomly sample "top" ponds for that species
+  ##add it to the top for the other species
+  ponds.subset<-c(ponds.subset, sample.temp)
+}
+ponds.subset<-unique(ponds.subset)
+length(ponds.subset)/85
 
-##when finished with db, close the connection
-odbcCloseAll()
-
-##use data from sites inside the SBSPRP footprint only
-dat.sub<-subset(dat, subset = str_sub(Pond, 1,1) %in% c("A", "B", "R"), select=c(MonthYear, Season, YearID, CountDate, Pond, Agency, PondGrid, SpeciesCode, StandardGuild, TotalAbundance))
-
-##subset to surveys when all ponds were surveyed
-#survey.pond.no.occurence<-table(dat.sub$MonthYear, as.character(dat.sub$Pond)) %>% data.frame %>% subset(Freq==0)##ponds/survey combos with no counts
-#survey.pond.no.occurence<-survey.pond.no.occurence[-which(survey.pond.no.occurence$Var2 %in% c("A8", "A8S", "A8W", "B10X")),] ##ignore A8 ponds with 0 counts
-#dat.complete<-dat.sub[-which(as.character(dat.sub$MonthYear) %in% as.character(survey.pond.no.occurence[,1])),]
-
-##use subset of data until figure out appropriate way to identify complete survey periods
-dat.complete<-dat.sub
+##REDUCE SURVEY FREQUENCY
 
 ##Gerrodette. 1987. A power analysis for detecting trends. Ecology.
 ##calculate statistical power (1-beta) to reject null hypothesis which is false (ie ability to detect increase or decrease in population size, or slope not equal to 0)
 ##depends on sample size (n), probability of type 1 error (alpha), and magnitude of difference between null hypothesis and reality (effect size, ie rate of change, r); also depends on measurement error (CV, coefficient of variation of abundance estimate, can be estimated by residual variance about the regression line)
-
-dat.complete$year<-format(dat.complete$MonthYear, "%Y")
-
-##add season.year ids, taking into account that winter crosses years
-dat.complete$season.yr<-str_c(dat.complete$Season, ".", as.character(dat.complete$year))
-dat.complete$season.yr[which(format(dat.complete$MonthYear, "%m") %in% c("01", "02"))]<-str_c(dat.complete$Season[which(format(dat.complete$MonthYear, "%m") %in% c("01", "02"))], ".", as.character(as.numeric(dat.complete$year[which(format(dat.complete$MonthYear, "%m") %in% c("01", "02"))])-1))
 
 ##species counts by unique survey
 dat.spp<- dat.complete %>% group_by(year, season.yr, MonthYear, Season, SpeciesCode) %>% summarise(abun=sum(TotalAbundance)) %>% data.frame()
