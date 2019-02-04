@@ -16,11 +16,16 @@ library(tidyr) ##required for spread
 source('Code_load_waterbird_data_13Dec2018.R')
 head(dat.complete)
 
+##use data from sites inside the SBSPRP footprint only
+dat.sub<-subset(dat.complete, subset = str_sub(Pond, 1,1) %in% c("A", "B", "R"), select=c(MonthYear, Season, YearID, year, CountDate, Pond, Agency, PondGrid, SpeciesCode, StandardGuild, TotalAbundance))
+
+dat<-dat.sub
+
 ##species counts by survey and pond
-dat.pond<-dat.complete %>% group_by(year, season.yr, MonthYear, Season, Pond, SpeciesCode) %>% summarise(abun=sum(TotalAbundance)) %>% data.frame()
+dat.pond<-dat %>% group_by(year, season.yr, MonthYear, Season, Pond, SpeciesCode) %>% summarise(abun=sum(TotalAbundance)) %>% data.frame()
 
 ##species counts by unique survey
-dat.spp<- dat.complete %>% group_by(year, season.yr, MonthYear, Season, SpeciesCode) %>% summarise(abun=sum(TotalAbundance)) %>% data.frame()
+dat.spp<- dat %>% group_by(year, season.yr, MonthYear, Season, SpeciesCode) %>% summarise(abun=sum(TotalAbundance)) %>% data.frame()
 
 ##average counts by season and species
 dat.season<- dat.spp %>% group_by(Season, season.yr, SpeciesCode) %>% summarise(mean=round(mean(abun),0)) %>% data.frame()

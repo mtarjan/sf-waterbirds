@@ -14,7 +14,7 @@ con<-odbcConnectAccess2007(wb) ##open connection to database
 sqlTables(con, tableType="TABLE")$TABLE_NAME ##Get names of available tables
 
 qry<-
-  "SELECT d.MonthYear, d.Season, d.YearID, d.CountDate, d.Pond, d.Agency, d.PondGrid, d.SpeciesCode, d.TotalAbundance, s.StandardGuild 
+  "SELECT d.MonthYear, d.Season, d.YearID, d.CountDate, d.Pond, d.Agency, d.PondGrid, d.SpeciesCode, d.TotalAbundance, s.StandardGuild, d.CountStartTime, d.CountEndTime 
 FROM SBSPBirdData_IncludesNoBirdPondCounts AS d
 LEFT OUTER JOIN SpeciesCodes AS s ON d.SpeciesCode = s.SpeciesCode" 
 
@@ -40,12 +40,11 @@ dat$SpeciesCode[which(acronyms!='NA')]<-acronyms[which(acronyms!='NA')]
 ##stopped using "none" categroy in 2015 on. what was it replaced with? victoria will know how we enter these data into our database, but how did it get translated into USGS database when we transferred the data over?
 ##none category appears to apply at the GRID level
 
-##use data from sites inside the SBSPRP footprint only
-dat.sub<-subset(dat, subset = str_sub(Pond, 1,1) %in% c("A", "B", "R"), select=c(MonthYear, Season, YearID, year, CountDate, Pond, Agency, PondGrid, SpeciesCode, StandardGuild, TotalAbundance))
-
-##need to consider years with counts at all ponds, or use a method that takes site into account
-dat.complete<-dat.sub
+dat.complete<-dat
 
 ##add season.year ids, taking into account that winter crosses years
 dat.complete$season.yr<-str_c(dat.complete$Season, ".", as.character(dat.complete$year))
 dat.complete$season.yr[which(format(dat.complete$MonthYear, "%m") %in% c("01", "02"))]<-str_c(dat.complete$Season[which(format(dat.complete$MonthYear, "%m") %in% c("01", "02"))], ".", as.character(as.numeric(dat.complete$year[which(format(dat.complete$MonthYear, "%m") %in% c("01", "02"))])-1))
+
+dat.complete$duration.mins<-as.numeric(difftime(time2 = dat.complete$CountStartTime, time1 = dat.complete$CountEndTime, units="mins"))
+dat.complete$duration.mins[which(strftime(dat.complete$CountStartTime, format="%H:%M:%S")=="00:00:00" | strftime(dat.complete$CountEndTime, format="%H:%M:%S")=="00:00:00")]<-NA ##set unknown durations to NA
