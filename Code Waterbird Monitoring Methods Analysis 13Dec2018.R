@@ -343,3 +343,41 @@ for (j in 1:length(unique(power.dat$sp))) {
   png(filename = str_c("fig.",spp.temp,".",season.n.temp, "surveys.png"), units="in", width=6.5, height=3.5,  res=200);print(fig); dev.off()
 }
 fig
+
+##ASSESS EFFECT OF REMOVING GRIDDING ON SURVEY DURATION
+##remove durations with error (duration is negative)
+dat.sfbbo$grids<-T
+dat.sfbbo$grids[which(dat.sfbbo$year==2019)]<-F
+dat.sub<-subset(dat.sfbbo, duration.mins>1)
+dat.sub<-unique(subset(dat.sub, month %in% c("01", "02") & Pond %in% unique(dat.sub$Pond[which(dat.sub$year==2019 & dat.sub$month=="01")]), select= c(Date, Pond, year, month, duration.mins, grids))) ##get unique records of pond, date, and survey duration
+head(dat.sub)
+
+##remove unused ponds
+dat.sub<-droplevels(dat.sub)
+
+##order pond facets by duration values
+dat.sub<-dat.sub[order(dat.sub$duration.mins, decreasing = T),]
+#Turn your 'treatment' column into a character vector
+dat.sub$Pond <- as.character(dat.sub$Pond)
+#Then turn it back into a factor with the levels in the correct order
+dat.sub$Pond <- factor(dat.sub$Pond, levels=unique(dat.sub$Pond))
+
+#boxplot(dat.sub$duration.mins[which(dat.sub$grids==T)]~dat.sub$Pond[which(dat.sub$grids==T)], ylab="Survey duration (mins)")
+#points(x=dat.sub$Pond[which(dat.sub$grids==F)], y = dat.sub$duration.mins[which(dat.sub$grids==F)], col="red", pch=4)
+
+#boxplot(dat.sub$duration.mins~dat.sub$grids)
+
+library(ggplot2)
+fig <- ggplot(data = dat.sub, aes(x = Pond, y = duration.mins, colour=grids))
+fig <- fig + geom_boxplot(data = subset(dat.sub, grids==T))
+fig <- fig + geom_boxplot(data = subset(dat.sub, grids==F))
+fig <- fig + ylab("Survey duration (mins)")
+fig <- fig + theme_classic()
+fig <- fig + scale_y_continuous(breaks = seq(0,max(dat.sub$duration.mins), 25))
+fig <- fig + theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust=1))
+fig
+
+fig.grid.effect<-fig
+
+##test it
+duration.test<-t.test(duration.mins~grids, data= dat.sub)

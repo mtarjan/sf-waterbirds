@@ -1,6 +1,6 @@
 ##load salt pond data
 ##m tarjan
-##December 13, 2018
+##Feb 4, 2019
 
 ##LOAD REQUIRED PACAKGES
 library(RODBC) ##required to connect to Access database
@@ -46,5 +46,32 @@ dat.complete<-dat
 dat.complete$season.yr<-str_c(dat.complete$Season, ".", as.character(dat.complete$year))
 dat.complete$season.yr[which(format(dat.complete$MonthYear, "%m") %in% c("01", "02"))]<-str_c(dat.complete$Season[which(format(dat.complete$MonthYear, "%m") %in% c("01", "02"))], ".", as.character(as.numeric(dat.complete$year[which(format(dat.complete$MonthYear, "%m") %in% c("01", "02"))])-1))
 
+##add duration of survey
 dat.complete$duration.mins<-as.numeric(difftime(time2 = dat.complete$CountStartTime, time1 = dat.complete$CountEndTime, units="mins"))
 dat.complete$duration.mins[which(strftime(dat.complete$CountStartTime, format="%H:%M:%S")=="00:00:00" | strftime(dat.complete$CountEndTime, format="%H:%M:%S")=="00:00:00")]<-NA ##set unknown durations to NA
+
+##LOAD SFBBO WATERBIRD DATA
+wb.sfbbo<-"S:/Science/Waterbird/Databases - enter data here!/Cargill Pond Surveys/Cargill Pond Surveys.accdb" ##database filepath
+
+con<-odbcConnectAccess2007(wb.sfbbo) ##open connection to database
+
+sqlTables(con, tableType="TABLE")$TABLE_NAME ##Get names of available tables
+
+qry<-
+  "SELECT * 
+FROM [Bird Data] AS d" 
+
+dat<-sqlQuery(con, qry); head(dat) ##import the queried table
+
+##when finished with db, close the connection
+odbcCloseAll()
+
+dat.sfbbo<-dat
+
+##format data
+dat.sfbbo$year<-format(dat.sfbbo$Date, "%Y")
+dat.sfbbo$month<-format(dat.sfbbo$Date, "%m")
+
+##add duration of survey
+dat.sfbbo$duration.mins<-as.numeric(difftime(time2 = dat.sfbbo$`Start Time`, time1 = dat.sfbbo$`End Time`, units="mins"))
+dat.sfbbo$duration.mins[which(strftime(dat.sfbbo$`Start Time`, format="%H:%M:%S")=="00:00:00" | strftime(dat.sfbbo$`End Time`, format="%H:%M:%S")=="00:00:00")]<-NA ##set unknown durations to NA

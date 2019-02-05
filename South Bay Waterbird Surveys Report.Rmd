@@ -47,6 +47,9 @@ We evaluated our ability to detect trends under sampling schemes where we sample
 
 <!--...habitat type = managed pond or restored tidal marsh...weighting takes into account multiple species...adapts based on which species are already covered?? somewhat stochastic weights??-->
 
+###Preliminary Updates to Survey Methods
+During meetings of members of the SBSPRP Science Advisory Committee in 2018, it was determined that assigning birds to 250 m by 250 m grids within each pond was no longer necessary to address upcoming questions for the SBSPRP. The grid assignments were useful in addressing questions about habitat use within each pond. The committee determined that the community has gained a sufficient understanding of habitat use within the ponds, and that grid assignment is no longer needed. SFBBO eliminated this procedure from survey protocols in January 2019. This brief analysis addresses the question of whether ceasing assignment to grids affected the duration of the survey protocol. To date, SFBBO has conducted `r nrow(unique(subset(dat.sfbbo, subset = grids ==T, select=Survey)))` survey rounds with grid assignments, and `r nrow(unique(subset(dat.sfbbo, subset = grids ==F, select=Survey)))` survey rounds without grid assignments. A t-test comparing survey duration for surveys with versus without grid assignments showed that there is no detectable difference between survey duration using the two protocols (t = `r round(duration.test$statistic, 2)`, DF = `r round(duration.test$parameter, 2)`, p = `r round(duration.test$p.value, 2)`) (Figure 1).
+
 ###Survey Cost
 ```{r, echo=FALSE}
 cost.goal<-50000
@@ -60,3 +63,10 @@ The three-year average of annual spending for 2015-2017 is \$84371.46. We sought
 Tarjan, L.M. & V. Heyse. 2018. Evaluation of Waterbird Monitoring Protocols for the South Bay Salt Pond Restoration Project. Report prepared for the South Bay Salt Pond Restoration Project Management Team.
 
 Wood, J., Page, G., Reiter, M., Liu, L., & Robinson-nilsen, C. (2010). Abundance and Distribution of Wintering Shorebirds in San Francisco Bay , 1990-2008 : Population Change and Informing Future Monitoring. Petaluma, CA.
+
+#FIGURES
+```{r, echo=F, fig.height=4, fig.width=6.5, dpi=300}
+print(fig.grid.effect)
+figure.num<-figure.num+1
+```
+Figure `r figure.num`. 
