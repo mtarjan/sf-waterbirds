@@ -16,6 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r, echo=FALSE, warning=FALSE, include=FALSE}
 #source('Code_waterbird_trend_assessment.R')
+#source('Code Waterbird Monitoring Methods Analysis 13Dec2018')
 figure.num<-0
 table.num<-0
 ```
