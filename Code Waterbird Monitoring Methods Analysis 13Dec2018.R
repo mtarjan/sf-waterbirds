@@ -45,12 +45,47 @@ library(vegan)
 ##bioenv(comm = , env =); gives Subset of environmental variables (column names in env) with best correlation to community data.
 ##set comm = entire set of sites and env = the same so will test subsets of the total. will give set of sites with best match to overall data. output is set of column names. so the column names need to be the sites. in that case, both matrices are the same. columns are sites and rows are species...
 ##but pete said the matrix is a similarity matrix that is sp by sp. but maybe that's what the program creates in the background.
+source("Code bvstep function.R")
 
 guildxsite<-subset(dat.complete, StandardGuild %in% c("HERON", "MEDSHORE","FISHEAT","DABBLER","DIVER","GULL","TERN","EAREDGR","SMSHORE","PHAL") & str_sub(Pond, 1,1) %in% c("A", "B", "R")) %>% group_by(MonthYear, Pond, StandardGuild) %>% summarise(abun=sum(TotalAbundance)) %>% data.frame() %>% group_by(Pond, StandardGuild) %>% summarise(av.abun=mean(abun, na.rm=T)) %>% data.frame() %>% spread(key = Pond, value = av.abun, fill = 0) #rows are guilds and columns are sites
 guildxsite<-subset(guildxsite, select=-StandardGuild) ##remove the guild name
 
-sets <- bioenv(comm = guildxsite[,1:15], env = guildxsite[,1:15]) ##require any kind of standardizing transformation?
-sets
+#sets <- bioenv(comm = guildxsite[,1:15], env = guildxsite[,1:15]) ##require any kind of standardizing transformation?
+
+sets <- bv.step(guildxsite, guildxsite,  
+                              fix.dist.method="bray", var.dist.method="bray", 
+                              scale.fix=FALSE, scale.var=FALSE,  
+                              max.rho=0.995, min.delta.rho=0.001, 
+                              random.selection=TRUE, 
+                              prop.selected.var=0.3, 
+                              num.restarts=50, 
+                              output.best=10, 
+                              var.always.include=NULL) 
+sets$order.by.best
+sets$order.by.i.comb
+sets$var.always.include
+sets$var.exclude
+top.var<-as.numeric(str_split(sets$order.by.i.comb$var.incl[3], pattern = ",")[[1]])
+
+#second round 
+##update variables to always include based on round above
+sets2  <- bv.step(guildxsite, guildxsite,  
+                                fix.dist.method="bray", var.dist.method="bray", 
+                                scale.fix=FALSE, scale.var=FALSE,  
+                                max.rho=0.995, min.delta.rho=0.001, 
+                                random.selection=TRUE, 
+                                prop.selected.var=0.3, 
+                                num.restarts=50, 
+                                output.best=10, 
+                                var.always.include=top.var)
+sets2$order.by.best
+sets2$order.by.i.comb
+sets2$var.always.include
+sets2$var.exclude
+
+##see which variables are best subset
+#colnames(guildxsite)[c(4,10,16,18,23,24,26,37,46,53,54)]
+set.select<-colnames(guildxsite)[as.numeric(str_split(sets2$order.by.best$var.incl[1], pattern = ",")[[1]])]
 
 ##REDUCE SURVEY FREQUENCY
 
