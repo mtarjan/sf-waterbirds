@@ -36,6 +36,22 @@ for (j in 1:length(unique(dat.pond$StandardGuild))) {
 ponds.subset<-unique(ponds.subset)
 length(ponds.subset)/85
 
+##CREATE SET OF SURVEY SITES WITH SIMILAR COMPOSITION TO ENTIRE SET
+##bioenv in vegan package
+##dimensions of matrix are species. multiple matrices for multiple sites. dimensions will be guilds
+library(vegan)
+##http://menugget.blogspot.com/2011/06/clarke-and-ainsworths-bioenv-and-bvstep.html
+##comm matrix row = sites & columns = species. obviously need to be in same order
+##bioenv(comm = , env =); gives Subset of environmental variables (column names in env) with best correlation to community data.
+##set comm = entire set of sites and env = the same so will test subsets of the total. will give set of sites with best match to overall data. or do I need to flip the matrix? output is set of column names. so the column names need to be the sites?? in that case, both matrices are the same. columns are sites and rows are species...
+##but pete said the matrix is a similarity matrix that is sp by sp. but maybe that's what the program creates in the background.
+
+guildxsite<-subset(dat.complete, StandardGuild %in% c("HERON", "MEDSHORE","FISHEAT","DABBLER","DIVER","GULL","TERN","EAREDGR","SMSHORE","PHAL") & str_sub(Pond, 1,1) %in% c("A", "B", "R")) %>% group_by(MonthYear, Pond, StandardGuild) %>% summarise(abun=sum(TotalAbundance)) %>% data.frame() %>% group_by(Pond, StandardGuild) %>% summarise(av.abun=mean(abun, na.rm=T)) %>% data.frame() %>% spread(key = Pond, value = av.abun, fill = 0) #rows are guilds and columns are sites
+guildxsite<-subset(guildxsite, select=-StandardGuild) ##remove the guild name
+
+sets <- bioenv(comm = guildxsite, env = guildxsite) ##require any kind of standardizing transformation?
+sets
+
 ##REDUCE SURVEY FREQUENCY
 
 ##Gerrodette. 1987. A power analysis for detecting trends. Ecology.

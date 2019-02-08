@@ -75,3 +75,4 @@ dat.sfbbo$month<-format(dat.sfbbo$Date, "%m")
 ##add duration of survey
 dat.sfbbo$duration.mins<-as.numeric(difftime(time2 = dat.sfbbo$`Start Time`, time1 = dat.sfbbo$`End Time`, units="mins"))
 dat.sfbbo$duration.mins[which(strftime(dat.sfbbo$`Start Time`, format="%H:%M:%S")=="00:00:00" | strftime(dat.sfbbo$`End Time`, format="%H:%M:%S")=="00:00:00")]<-NA ##set unknown durations to NA
+dat.sfbbo$total.birds<-dat.sfbbo$`#Foraging` + dat.sfbbo$`#Roosting` + dat.sfbbo$`#On an Island` + dat.sfbbo$`#On a Levee` + dat.sfbbo$`#On Manmade`
