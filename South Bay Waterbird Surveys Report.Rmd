@@ -27,7 +27,7 @@ The South Bay Salt Pond Restoration Project (SBSPRP) is the largest tidal wetlan
 ##Objectives
 SFBBO has been monitoring waterbirds in SBSPRP sites and surrounding Cargill ponds since 2003, and our data are reported annually to the SBSPRP Management Team. Our first task is to create an updated assessment of the status of waterbirds in the context of the SBSPRP’s targets for waterbird populations. 
 
-Our second task is to assess ongoing monitoring efforts to ensure that they are both effective for evaluating SBSPRP targets and efficient to ensure sustainability. Specifically, we aimed to determine an approach that (1) is 50% cheaper than current survey protocols, and (2) can be used to answer the question of whether waterbird populations in the South Bay are above or below targets set by the SBSPRP. We also sought protocols that (1) generate data that are directly comparable to counts from previous years, and (2) allow for simultaneous collection of other data types (e.g. percent of the pond bottom that is vegetated).
+Our second task is to assess ongoing monitoring efforts to ensure that they are both effective for evaluating SBSPRP targets and efficient to ensure sustainability. Specifically, we aimed to determine an approach that (1) is more resource efficient than current survey protocols, and (2) can be used to answer the question of whether waterbird populations in the South Bay are above or below targets set by the SBSPRP. We also sought protocols that (1) generate data that are directly comparable to counts from previous years, and (2) allow for simultaneous collection of other data types (e.g. percent of the pond bottom that is vegetated).
 
 #TASK 1 - South Bay Waterbird Population Trends
 ##Approach
@@ -37,8 +37,6 @@ We coordinated with SBSPRP managers through a series of meetings to confirm targ
 ##Approach
 We used power analyses and simulations informed by our existing dataset to explore the feasibility of decreasing survey effort using a subsetting protocol. We focused on a subset approach because previous analyses (Tarjan & Heyse 2018) concluded that sampling frequency should remain at current rates (two times in the peak season for a given species) in order to detect ten-year trends in waterbird abundance with sufficient power (beta = 0.80). We 1) researched approaches for decreasing survey effort by subsetting the sites, and 2) evaluated the effect of the subset protocol on our ability to detect trends following methods by Tarjan and Heyse (2018).
 
-One challenge that emerges as a result of subsetting sites is being able to compare new data with historical data. We therefore assumed that one goal of subsetting sites is to have a collection of sites that is representative of the entire project footprint in terms of species composition and diversity. We used a similarity index to evaluate how representative counts in a subset are to counts in the entire sample. We selected a set of sites that was 90% similar to the full set of sites in terms of species composition and relative abundance. We then ranked those sets according to the following criteria: (1) site accessibility; (2) inclusion of particular sites of interest, comprising ...; and (3) inclusion of at least two sites matching each of these types: (a) managed pond, (b) restored pond, (c) pond planned for restoration, and (d) pond managed for Western Snowy Plover breeding.
-
 ###Subsetting Protocols and Trend Detection
 The ideal subset of sites would yield counts that are representative of the population. Counts from a subset of sites can become biased if birds shift their locations over time. The potential for this "frame bias" (Bart et al. 2005) leaves researchers unsure of whether a decline occurred due to a decline in the larger population or due to movement away from the surveyed sites (i.e. the frame) over time. A second type of bias called selection bias arises when some sites cannot be surveyed due to access restrictions.
 
@@ -46,9 +44,17 @@ Earlier work by Wood et al. (2010) simulated shorebird counts from sites within 
 
 We applied Wood et al.'s approach with modifications to the geographic scope, species, and detection criteria to identify feasible reductions in survey effort for the SBSPRP.  Previous analyses (Tarjan & Heyse 2018) revealed that survey frequency needs to remain at current levels (twice during the peak season for any given species) to detect Project targets. These results are in agreement with Wood et al.'s findings that decreasing survey effort by 50% (from every one to every two years) dramatically lowers power. An alternative approach to decrease survey effort is to survey fewer locations, which we evaluate here. 
 
+One challenge that emerges as a result of subsetting sites is being able to compare new data with historical data. We therefore assumed that one goal of subsetting sites is to have a collection of sites that is representative of the entire project footprint in terms of species composition and diversity. We used a similarity index to evaluate how representative counts in a subset are to counts in the entire sample. This similarity assessments was implemented using the bioenv function in the Vegan package (Oksanen et al. 2019) in R. We selected a set of sites with a rho value of at least 0.95 when compared with the full set of sites in terms of species composition and relative abundance. The community was represented by a small number of ponds (<10), so we manually added ponds to the sample based on these user-defined criteria: (1) site accessibility; (2) inclusion of particular sites of interest, comprising ...; and (3) inclusion of at least two sites matching each of these types: (a) managed pond, (b) restored pond, (c) pond planned for restoration, and (d) pond managed for Western Snowy Plover breeding.
+
 We evaluated our ability to detect trends under sampling schemes where we sample 100%, 50% and 25% of survey sites. Across all subsampling simulations we used a stratified and weighted approach, where the sites (which we define as ponds) were stratified by habitat type and weighted by historical bird abudance. The birds within the SBSPRP represent diverse guilds (e.g. shorebirds, dabbling ducks, diving ducks) so their habitat preferences differ and high density areas are not necessarily representative of the preferred area for all species. To incorporate representative sites for all guilds, we randomly selected sites weighted by density for each guild. We then randomized the order of guilds and selected the top sites in sequential order for each guild until the target number of sites was reached. 
 
 <!--...habitat type = managed pond or restored tidal marsh...weighting takes into account multiple species...adapts based on which species are already covered?? somewhat stochastic weights??-->
+
+##Results
+###Site Subsets and Trend Detection
+Based on the similarity index, the community in the SBSPRP footprint was well-represented by the following ponds: **`r set.select`**. Average counts by guild for this subset of ponds compared with the entire set of ponds were very similar, with rho = `r round(sets2$order.by.best$rho[1],2)`. In addition to these `r length(set.select)` ponds, we manually added the following ponds based on the criteria described above: .
+
+
 
 ###Preliminary Updates to Survey Methods
 During meetings of members of the SBSPRP Science Advisory Committee in 2018, it was determined that assigning birds to 250 m by 250 m grids within each pond was no longer necessary to address upcoming questions for the SBSPRP. The grid assignments were useful in addressing questions about habitat use within each pond. The committee determined that the community has gained a sufficient understanding of habitat use within the ponds, and that grid assignment is no longer needed. SFBBO eliminated this procedure from survey protocols in January 2019. This brief analysis addresses the question of whether ceasing assignment to grids affected the duration of the survey protocol. To date, SFBBO has conducted `r nrow(unique(subset(dat.sfbbo, subset = grids ==T, select=Survey)))` survey rounds with grid assignments, and `r nrow(unique(subset(dat.sfbbo, subset = grids ==F, select=Survey)))` survey rounds without grid assignments. A t-test comparing survey duration for surveys with versus without grid assignments showed that there is no detectable difference between survey duration using the two protocols (t = `r round(duration.test$statistic, 2)`, DF = `r round(duration.test$parameter, 2)`, p = `r round(duration.test$p.value, 2)`) (Figure 1).
@@ -63,11 +69,28 @@ new.staff.hrs.cost<-round(cost.goal - (91144.12-(2377.25+394)*0.7*mean(c(17.77*1
 The three-year average of annual spending for 2015-2017 is \$84371.46. We sought a survey protocol that could be implemented on an annual budget of \$`r cost.goal`, which represents a `r round((84371.46-cost.goal)/84371.46*100,0)`% decrease in survey costs. See Appendix I for a previous project budget. Reductions in budget items will depend on how the protocol changes are implemented. We expect that the following costs would remain the same with a new survey protocol, assuming the protocol was implemented with the same frequency: data analysis, data management, meetings, project management, and report writing, as well as supplies, mileage and tolls, and conferences. Reduced costs would be reflected in fewer staff hours spent on data entry and field work. Past data entry required 394 hours, while field work required 2377.25 hours each year. Roughly 30% of these hours can be fulfilled by interns. The rate for interns will remain at a minimum of $500 per month. Achieving the goal for cost decreases requires that staff hours on field work and data entry are decreased to `r new.staff.hrs` total hours, which would cost \$`r new.staff.hrs.cost` with overhead. Maintaining the ratio of field work hours to data entry hours indicates that staff would need to spend `r new.staff.hrs*0.858` hours on fieldwork and `r new.staff.hrs*0.142` hours on data entry, which represents a `r round(((2377.25+394)-new.staff.hrs)/(2377.25+394)*100,0)`% reduction in field work hours.
 
 #WORKS CITED
+Jari Oksanen, F. Guillaume Blanchet, Michael Friendly, Roeland Kindt, Pierre Legendre, Dan McGlinn, Peter R. Minchin, R. B. O'Hara, Gavin L. Simpson, Peter Solymos, M. Henry H. Stevens, Eduard Szoecs and Helene Wagner (2019). vegan: Community Ecology Package. R package version 2.5-4. https://CRAN.R-project.org/package=vegan
+
 Tarjan, L.M. & V. Heyse. 2018. Evaluation of Waterbird Monitoring Protocols for the South Bay Salt Pond Restoration Project. Report prepared for the South Bay Salt Pond Restoration Project Management Team.
 
 Wood, J., Page, G., Reiter, M., Liu, L., & Robinson-nilsen, C. (2010). Abundance and Distribution of Wintering Shorebirds in San Francisco Bay , 1990-2008 : Population Change and Informing Future Monitoring. Petaluma, CA.
 
+#TABLES
+Table `r table.num`.
+```{r, echo=F, warning=F, message=F}
+kable(power.table.compare, row.names = F)
+
+table.num<-table.num+1
+```
+
 #FIGURES
+```{r, echo=FALSE}
+knitr::include_graphics(path="fig.RUDU.2surveys.png")
+figure.num<-figure.num+1
+```
+Fig `r figure.num`. 
+
+
 ```{r, echo=F, fig.height=4, fig.width=6.5, dpi=300}
 print(fig.grid.effect)
 figure.num<-figure.num+1

@@ -9,7 +9,9 @@ library(ggplot2)
 #library(stringr)
 library(tidyr) ##required for spread
 
-source('Code_load_waterbird_data_13Dec2018.R')
+if (exists("dat.complete")==F) {
+  source('Code_load_waterbird_data_13Dec2018.R')
+}
 head(dat.complete)
 
 ##SUBSET SURVEY SITES
@@ -94,7 +96,7 @@ set.select<-colnames(guildxsite)[as.numeric(str_split(sets2$order.by.best$var.in
 ##depends on sample size (n), probability of type 1 error (alpha), and magnitude of difference between null hypothesis and reality (effect size, ie rate of change, r); also depends on measurement error (CV, coefficient of variation of abundance estimate, can be estimated by residual variance about the regression line)
 
 ##species counts by unique survey
-dat.spp<- dat.complete %>% group_by(year, season.yr, MonthYear, Season, SpeciesCode) %>% summarise(abun=sum(TotalAbundance)) %>% data.frame()
+dat.spp<- subset(dat.complete, Pond %in% set.select) %>% group_by(year, season.yr, MonthYear, Season, SpeciesCode) %>% summarise(abun=sum(TotalAbundance)) %>% data.frame()
 
 ##average counts by season and species
 dat.season<- dat.spp %>% group_by(Season, season.yr, SpeciesCode) %>% summarise(mean=round(mean(abun),0)) %>% data.frame()
@@ -180,14 +182,14 @@ fig
 #dat.temp<-dat.spp %>% group_by(season.yr, SpeciesCode) %>% summarise(sd=sd(abun), mean=mean(abun)) %>% data.frame()
 #plot(sd~mean, data=dat.temp)
 
-pulse<-F
+pulse<-T
 rep<-1000
 percents<-c(-10, -15, -20, -50)
 years<-3:15
 season.n<-2 ##number of samples taken within the season/year
 #spp<-unique(dat$SpeciesCode)
 spp<-c("RUDU", "BUFF", "CANV", "SCAU", "WESA", "LESA", "EAGR", "PHAL", "RNPH", "BOGU", "NSHO", "WILL", "AMAV", "MAGO", "LETE", "FOTE", "CATE")
-#spp<-c("WESA", "LESA", "EAGR", "PHAL", "RNPH", "BOGU", "NSHO", "WILL", "AMAV", "MAGO", "LETE", "FOTE", "CATE")
+#spp<-c("WESA", "NSHO", "WILL")
 #out.sim<-data.frame(sp=NA, rep=NA, per=NA, season.n=NA, season=NA, years=NA, detect=NA, count=NA)
 power.dat.out<-dim(0)
 for (j in 1:length(spp)) { ##for each species
@@ -370,7 +372,7 @@ power.table.spread<-replace(power.table.spread, list = is.na(power.table.spread)
 write.csv(power.table.spread, "power.table.spread.csv", row.names=F)
 
 ##plot results
-n.plot<-1 ##number of seasons to plot
+n.plot<-2 ##number of seasons to plot
 for (j in 1:length(unique(power.dat$sp))) {
   data.plot<-subset(power.dat, sp==unique(power.dat$sp)[j] & season.n==n.plot)
   
@@ -394,6 +396,14 @@ for (j in 1:length(unique(power.dat$sp))) {
   png(filename = str_c("fig.",spp.temp,".",season.n.temp, "surveys.png"), units="in", width=6.5, height=3.5,  res=200);print(fig); dev.off()
 }
 fig
+
+##make a table comparing the power analyses from the full set of sites to the subset of sites
+##load output from power analyses of full set
+power.table.spread.full<-read.csv("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2018 Methods Analysis/Waterbird Monitoring Methods Analysis 2018/power.table.spread.pulse.12Apr2018.csv")
+power.fullset<-subset(power.table.spread.full, select=-c("1","3"))
+colnames(power.fullset)<-c("sp", "season", "per", "All Sites")
+colnames(power.table.spread)<-c("sp", "season", "per", "Subset of Sites")
+power.table.compare<-join(power.fullset, power.table.spread)
 
 ##ASSESS EFFECT OF REMOVING GRIDDING ON SURVEY DURATION
 ##remove durations with error (duration is negative)
