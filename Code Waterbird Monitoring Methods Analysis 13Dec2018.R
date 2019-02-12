@@ -400,10 +400,13 @@ fig
 ##make a table comparing the power analyses from the full set of sites to the subset of sites
 ##load output from power analyses of full set
 power.table.spread.full<-read.csv("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2018 Methods Analysis/Waterbird Monitoring Methods Analysis 2018/power.table.spread.pulse.12Apr2018.csv")
-power.fullset<-subset(power.table.spread.full, select=-c("1","3"))
-colnames(power.fullset)<-c("sp", "season", "per", "All Sites")
+power.fullset<-subset(power.table.spread.full, select=-c(X3))
+colnames(power.fullset)<-c("sp", "season", "per", "All Sites 1 survey", "All Sites 2 surveys")
 colnames(power.table.spread)<-c("sp", "season", "per", "Subset of Sites")
-power.table.compare<-join(power.fullset, power.table.spread)
+library(dplyr)
+power.table.compare<-dplyr::full_join(subset(power.fullset, select = -season), subset(power.table.spread, select= -season))
+power.table.compare$`Subset of Sites`[which(is.na(power.table.compare$`Subset of Sites`))]<-">15"
+write.csv(power.table.compare, "power.table.freq.v.subset.csv", row.names=F)
 
 ##ASSESS EFFECT OF REMOVING GRIDDING ON SURVEY DURATION
 ##remove durations with error (duration is negative)
@@ -439,6 +442,8 @@ fig <- fig + theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust=1))
 fig
 
 fig.grid.effect<-fig
+
+png(filename = "fig.grid.effect.png", units="in", width=8, height=5,  res=200);print(fig); dev.off()
 
 ##test it
 duration.test<-t.test(duration.mins~grids, data= dat.sub)
