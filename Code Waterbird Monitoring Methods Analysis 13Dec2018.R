@@ -20,31 +20,9 @@ head(dat.complete)
 
 ##LOAD POND CATEGORY DATA (EG BREACHED, MANAGED)
 pond.cat<-read.csv("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2019 Waterbird Trend Assessment/SBSP pond categories.csv")
-wish.list<-c("RSF2", "A16", "A17", "A19", "A8", "E12", "E13", "E9", "E8A", "E10", "R3", "R4", "A1", "E6", "E6C", "E4C", "E5C") ##list of ponds that managers want to include in subset based on meeting with PMT in Feb 2019
+wish.list<-c("RSF2U1", "RSF2U2", "RSF2U3", "RSF2U4", "A16", "A17", "A19", "A8", "E12", "E13", "E9", "E8A", "E10", "R3", "R4", "A1", "E6", "E6C", "E4C", "E5C") ##list of ponds that managers want to include in subset based on meeting with PMT in Feb 2019
 
 ##SUBSET SURVEY SITES
-##addition in Dec 2018
-
-##species counts by survey (i.e. monthyear) and pond
-dat.pond<-dat.complete %>% group_by(year, season.yr, MonthYear, Season, Pond, StandardGuild) %>% summarise(abun=sum(TotalAbundance)) %>% data.frame()
-
-##select representative historical abundances by pond. for now just use one survey and a few species. eventually need to do this by guild
-dat.pond<-subset(dat.pond, MonthYear=="2016-12-01 PST" & StandardGuild %in% c("HERON", "MEDSHORE","FISHEAT","DABBLER","DIVER","GULL","TERN","EAREDGR","SMSHORE","PHAL"))
-
-sub.n<-round(length(levels(dat.pond$Pond))*0.5/length(unique(dat.pond$StandardGuild)),0) ##number of ponds to sample for each species = total number of ponds * fraction of ponds to survey / number of species
-
-ponds.subset<-dim(0)
-for (j in 1:length(unique(dat.pond$StandardGuild))) {
-  sp.temp<-unique(dat.pond$StandardGuild)[j]
-  dat.temp<-subset(dat.pond, StandardGuild==sp.temp)
-  ##natural log-total as the continuous stratification weight to even the sample selection probabilities (Wood et al 2010)
-  dat.temp$ln.abun<-log(dat.temp$abun)
-  sample.temp<-as.character(sample(dat.temp$Pond, size=sub.n, replace=F, prob=dat.temp$ln.abun)) ##randomly sample "top" ponds for that species
-  ##add it to the top for the other species
-  ponds.subset<-c(ponds.subset, sample.temp)
-}
-ponds.subset<-unique(ponds.subset)
-length(ponds.subset)/85
 
 ##CREATE SET OF SURVEY SITES WITH SIMILAR COMPOSITION TO ENTIRE SET
 ##bioenv in vegan package
@@ -97,14 +75,78 @@ sets2$var.exclude
 #colnames(guildxsite)[c(4,10,16,18,23,24,26,37,46,53,54)]
 set.select<-colnames(guildxsite)[as.numeric(str_split(sets2$order.by.best$var.incl[1], pattern = ",")[[1]])]
 
-##REDUCE SURVEY FREQUENCY
+##ADD PONDS BASED ON WISH LIST FROM PROJECT MANAGEMENT TEAM
+set.select2<-unique(c(set.select, wish.list))
+
+##ADD PONDS USING WEIGHTED RANDOM SELECTION BASED ON GUILD/SPECIES ABUNDANCE
+
+##species counts by survey (i.e. monthyear) and pond
+dat.pond<-dat.complete %>% group_by(year, season.yr, MonthYear, Season, Pond, StandardGuild) %>% summarise(abun=sum(TotalAbundance)) %>% data.frame()
+
+##take the average abundance by pond
+dat.pond.av<-dat.pond %>% group_by(Pond, StandardGuild) %>% summarise(abun=mean(abun)) %>% data.frame()
+
+##select representative historical abundances by pond. for now just use one survey and a few species. eventually need to do this by guild
+speciesOI<-c("SMSHORE", "DABBLER", "DIVER", "EAREDGR", "FISHEAT", "TERN") ##species of interest
+dat.pond.av<-subset(dat.pond.av, StandardGuild %in% speciesOI)
+
+#sub.n<-round(length(levels(dat.pond$Pond))*0.5/length(unique(dat.pond$StandardGuild)),0) ##number of ponds to sample for each species = total number of ponds * fraction of ponds to survey / number of species
+sub.n<-length(unique(dat.complete$Pond))*1 ##total number of ponds to sample using this protocol = total ponds * percent of ponds for subset
+
+ponds.subset.ordered<-set.select2
+for (j in 1:1000) {
+  sp.temp<-unique(dat.pond.av$StandardGuild)[sample(x = 1:length(unique(dat.pond.av$StandardGuild)), 1)]
+  dat.temp<-subset(dat.pond.av, StandardGuild==sp.temp)
+  ##natural log-total as the continuous stratification weight to even the sample selection probabilities (Wood et al 2010)
+  dat.temp$ln.abun<-log(dat.temp$abun)
+  sample.temp<-as.character(sample(dat.temp$Pond, size=1, replace=F, prob=dat.temp$ln.abun)) ##randomly sample "top" ponds for that species
+  ##add it to the top for the other species
+  ponds.subset.ordered<-unique(c(ponds.subset.ordered, sample.temp))
+  if (length(ponds.subset.ordered)>=sub.n) {break} ##break out of loop once enough ponds have been selected
+}
+ponds.subset.ordered ##get all ponds in order of preference for subset
+
+
+##ASSESSMENT OF SUBSET
+frac.sub<-0.5 ##fraction of ponds to survey
+
+##ASSESSMENT 1: ALLIGNMENT OF SUBSET COUNTS WITH OVERALL COUNTS
+out<-dim(0)
+for (j in 1:length(speciesOI)) {
+  species.temp<-speciesOI[j]
+  counts.temp<-subset(dat.pond, StandardGuild==species.temp) %>% group_by(MonthYear) %>% summarise(count=sum(abun)) %>% data.frame()
+  counts.sub.temp<-subset(dat.pond, StandardGuild==species.temp & Pond %in% ponds.subset.ordered[1:round(length(ponds.subset.ordered)*frac.sub, 0)]) %>% group_by(MonthYear) %>% summarise(count.sub=sum(abun)) %>% data.frame()
+  counts.temp<-left_join(x=counts.temp, y=counts.sub.temp, by=c("MonthYear"))
+  counts.temp$Guild<-species.temp
+  out<-rbind(out, counts.temp)
+}
+out[is.na(out)]<-0
+
+##correlate counts in all ponds versus subset to each other
+fig <- ggplot(data = out, aes(x = count, y = count.sub))
+fig <- fig + geom_point()
+fig <- fig + geom_smooth(method = "lm")
+fig <- fig + facet_wrap(facets = ~Guild, scales="free")
+fig <- fig + xlab("Bird counts all ponds") + ylab("Bird counts subset ponds")
+fig
+
+
+##compare trends of counts in all ponds to trends in counts from subset of ponds
+fig <- ggplot(data = gather(data = out, key = "pondgroup", value = "count", 2:3), aes(x = MonthYear, y = count, color=pondgroup))
+fig <- fig + geom_point()
+fig <- fig + geom_smooth(method = "lm")
+fig <- fig + facet_wrap(facets = ~Guild, scales="free")
+fig <- fig + xlab("Date") + ylab("Bird counts")
+fig
+
+##ASSESSMENT 2: TEST POWER TO DETECT TRENDS WITH SUBSET OF PONDS AND/OR REDUCED SURVEY FREQUENCY
 
 ##Gerrodette. 1987. A power analysis for detecting trends. Ecology.
 ##calculate statistical power (1-beta) to reject null hypothesis which is false (ie ability to detect increase or decrease in population size, or slope not equal to 0)
 ##depends on sample size (n), probability of type 1 error (alpha), and magnitude of difference between null hypothesis and reality (effect size, ie rate of change, r); also depends on measurement error (CV, coefficient of variation of abundance estimate, can be estimated by residual variance about the regression line)
 
 ##species counts by unique survey
-dat.spp<- subset(dat.complete, Pond %in% set.select) %>% group_by(year, season.yr, MonthYear, Season, SpeciesCode) %>% summarise(abun=sum(TotalAbundance)) %>% data.frame()
+dat.spp<- subset(dat.complete, Pond %in% ponds.subset.ordered[1:(round(85*frac.sub, 0))]) %>% group_by(year, season.yr, MonthYear, Season, SpeciesCode) %>% summarise(abun=sum(TotalAbundance)) %>% data.frame()
 
 ##average counts by season and species
 dat.season<- dat.spp %>% group_by(Season, season.yr, SpeciesCode) %>% summarise(mean=round(mean(abun),0)) %>% data.frame()
