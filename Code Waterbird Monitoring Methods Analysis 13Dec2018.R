@@ -9,10 +9,18 @@ library(ggplot2)
 #library(stringr)
 library(tidyr) ##required for spread
 
+##CREATE FOLDER FOR FIGURES
+dir.create(str_c("figures.", Sys.Date()))
+file.path<-str_c("figures.", Sys.Date())
+
 if (exists("dat.complete")==F) {
   source('Code_load_waterbird_data_13Dec2018.R')
 }
 head(dat.complete)
+
+##LOAD POND CATEGORY DATA (EG BREACHED, MANAGED)
+pond.cat<-read.csv("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2019 Waterbird Trend Assessment/SBSP pond categories.csv")
+wish.list<-c("RSF2", "A16", "A17", "A19", "A8", "E12", "E13", "E9", "E8A", "E10", "R3", "R4", "A1", "E6", "E6C", "E4C", "E5C") ##list of ponds that managers want to include in subset based on meeting with PMT in Feb 2019
 
 ##SUBSET SURVEY SITES
 ##addition in Dec 2018
@@ -393,7 +401,7 @@ for (j in 1:length(unique(power.dat$sp))) {
   fig <- fig + scale_y_continuous(breaks = seq(0,1,0.1), labels=seq(0,1,0.1))
   fig
   
-  png(filename = str_c("fig.",spp.temp,".",season.n.temp, "surveys.png"), units="in", width=6.5, height=3.5,  res=200);print(fig); dev.off()
+  png(filename = str_c(file.path, "/fig.",spp.temp,".",season.n.temp, "surveys.png"), units="in", width=6.5, height=3.5,  res=200);print(fig); dev.off()
 }
 fig
 
@@ -443,7 +451,7 @@ fig
 
 fig.grid.effect<-fig
 
-png(filename = "fig.grid.effect.png", units="in", width=8, height=5,  res=200);print(fig); dev.off()
+png(filename = str_c(file.path, "/fig.grid.effect.png"), units="in", width=8, height=5,  res=200);print(fig); dev.off()
 
 ##test it
 duration.test<-t.test(duration.mins~grids, data= dat.sub)
