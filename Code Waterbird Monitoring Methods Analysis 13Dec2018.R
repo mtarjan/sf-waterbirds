@@ -112,9 +112,13 @@ frac.sub<-c(0.3, 0.4, 0.5, 0.7, 1) ##fraction of ponds to survey
 
 ##create a map of subsets
 library(rgdal)
-land<- rgdal::readOGR(dsn = "S:/Science/GIS/SaltPonds_fromUGSS/shapefiles", layer= "mbyasfby_NAD27")
+land<- rgdal::readOGR(dsn = "S:/Science/GIS/CA_map_layers", layer= "north_america")
 CA<-rgdal::readOGR(dsn = "S:/Science/GIS/Salt Pond", layer= "CA_boundary_NAD83")
 ponds.poly<-rgdal::readOGR(dsn = "S:/Science/GIS/Salt Pond/all_salt_pond_grids_2014", layer= "2014_11_19_pond_scale")
+
+##check projections
+proj4string(ponds.poly); proj4string(land)
+land.utm <- spTransform(land, CRS("+init=epsg:4274")) # reproject
 
 ##example
 #https://cran.r-project.org/doc/contrib/intro-spatial-rl.pdf
@@ -123,7 +127,8 @@ ponds.poly<-rgdal::readOGR(dsn = "S:/Science/GIS/Salt Pond/all_salt_pond_grids_2
 #plot(lnd[ sel, ], col = "turquoise", add = TRUE) # add selected zones to map
 
 plot(ponds.poly)
-plot(CA, col="lightgrey")
+plot(land.utm[land.utm$COUNTRY=="USA" & land.utm$STATE_CODE =="CA",], col="lightgrey", add=T)
+plot(ponds.poly, add=T, col="red")
 
 ##ASSESSMENT 1: ALLIGNMENT OF SUBSET COUNTS WITH OVERALL COUNTS
 ##check which years have counts for all ponds
