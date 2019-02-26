@@ -83,7 +83,7 @@ set.select2<-unique(c(set.select, wish.list))
 ##species counts by survey (i.e. monthyear) and pond
 dat.pond<-dat.complete %>% group_by(year, season.yr, MonthYear, Season, Pond, StandardGuild) %>% summarise(abun=sum(TotalAbundance)) %>% data.frame()
 
-##take the average abundance by pond
+##take the average abundance by pond and species across all surveys
 dat.pond.av<-dat.pond %>% group_by(Pond, StandardGuild) %>% summarise(abun=mean(abun)) %>% data.frame()
 
 ##select representative historical abundances by pond. for now just use one survey and a few species. eventually need to do this by guild
@@ -108,36 +108,84 @@ ponds.subset.ordered ##get all ponds in order of preference for subset
 
 
 ##ASSESSMENT OF SUBSET
-frac.sub<-0.5 ##fraction of ponds to survey
+frac.sub<-c(0.3, 0.4, 0.5, 0.7, 1) ##fraction of ponds to survey
+
+##create a map of subsets
+library(rgdal)
+land<- rgdal::readOGR(dsn = "S:/Science/GIS/SaltPonds_fromUGSS/shapefiles", layer= "mbyasfby_NAD27")
+CA<-rgdal::readOGR(dsn = "S:/Science/GIS/Salt Pond", layer= "CA_boundary_NAD83")
+ponds.poly<-rgdal::readOGR(dsn = "S:/Science/GIS/Salt Pond/all_salt_pond_grids_2014", layer= "2014_11_19_pond_scale")
+
+##example
+#https://cran.r-project.org/doc/contrib/intro-spatial-rl.pdf
+#plot(lnd, col = "lightgrey") # plot the london_sport object
+#sel <- lnd$Partic_Per > 25
+#plot(lnd[ sel, ], col = "turquoise", add = TRUE) # add selected zones to map
+
+plot(ponds.poly)
+plot(CA, col="lightgrey")
 
 ##ASSESSMENT 1: ALLIGNMENT OF SUBSET COUNTS WITH OVERALL COUNTS
+##check which years have counts for all ponds
+table(dat.pond$season.yr, dat.pond$Pond)
+
 out<-dim(0)
-for (j in 1:length(speciesOI)) {
-  species.temp<-speciesOI[j]
-  counts.temp<-subset(dat.pond, StandardGuild==species.temp) %>% group_by(MonthYear) %>% summarise(count=sum(abun)) %>% data.frame()
-  counts.sub.temp<-subset(dat.pond, StandardGuild==species.temp & Pond %in% ponds.subset.ordered[1:round(length(ponds.subset.ordered)*frac.sub, 0)]) %>% group_by(MonthYear) %>% summarise(count.sub=sum(abun)) %>% data.frame()
-  counts.temp<-left_join(x=counts.temp, y=counts.sub.temp, by=c("MonthYear"))
-  counts.temp$Guild<-species.temp
-  out<-rbind(out, counts.temp)
+for (f in 1:length(frac.sub)) {
+  for (j in 1:length(speciesOI)) { ##for each species of interest
+    species.temp<-speciesOI[j]
+    counts.temp<-subset(dat.pond, StandardGuild==species.temp & Pond %in% ponds.subset.ordered[1:round(length(ponds.subset.ordered)*frac.sub[f], 0)]) %>% group_by(MonthYear, year, Season) %>% summarise(count=sum(abun)) %>% data.frame() ##take the counts for that species from the subset sites
+    counts.temp$Guild<-species.temp
+    counts.temp$pond.fraction<-frac.sub[f]
+    out<-rbind(out, counts.temp)
+  }
 }
 out[is.na(out)]<-0
 
-##correlate counts in all ponds versus subset to each other
-fig <- ggplot(data = out, aes(x = count, y = count.sub))
-fig <- fig + geom_point()
-fig <- fig + geom_smooth(method = "lm")
-fig <- fig + facet_wrap(facets = ~Guild, scales="free")
-fig <- fig + xlab("Bird counts all ponds") + ylab("Bird counts subset ponds")
-fig
-
 
 ##compare trends of counts in all ponds to trends in counts from subset of ponds
-fig <- ggplot(data = gather(data = out, key = "pondgroup", value = "count", 2:3), aes(x = MonthYear, y = count, color=pondgroup))
+##note that some ponds may not have been counted in all survey periods
+
+fig <- ggplot(data = subset(out, year >= 2005 & Season %in% c("Fall", "Winter")), aes(x = MonthYear, y = log(count+1), color=factor(pond.fraction)))
 fig <- fig + geom_point()
-fig <- fig + geom_smooth(method = "lm")
+fig <- fig + geom_smooth(method = "loess", se = F)
 fig <- fig + facet_wrap(facets = ~Guild, scales="free")
-fig <- fig + xlab("Date") + ylab("Bird counts")
+fig <- fig + xlab("Date") + ylab("ln(Bird count)")
+fig <- fig + theme_classic()
+fig <- fig + theme(strip.background = element_rect(colour = "white", fill = "white"))
+fig <- fig + scale_y_continuous(breaks = function(x) round(seq(from = x[1],to = x[2],by = (x[2]-x[1])/10),2))
+fig <- fig + scale_x_datetime(date_breaks = "2 years", date_labels = "%Y")
+fig <- fig + theme(axis.text.x = element_text(angle = 45, hjust=1, color="black"), axis.text.y = element_text(color="black"))
+fig <- fig + labs(color = "Proportion \nof sites")
 fig
+
+fig.loess<-fig
+
+##test whether trends are different for all data versus pond subset
+slopes<-dim(0)
+for (f in 1:length(frac.sub)) {
+  for (j in 1:length(unique(out$Guild))) {
+    guild.temp<-unique(out$Guild)[j]
+    dat.temp<-subset(out, Guild==guild.temp & year >=2005 & pond.fraction==frac.sub[f])
+    lm.all<-lm(formula = log(count+1) ~ MonthYear, data = dat.temp)
+    slopes<-rbind(slopes, data.frame(Guild=guild.temp, pond.fraction=frac.sub[f], Slope= summary(lm.all)$coefficients[2,1], se = summary(lm.all)$coefficients[2,2]))
+  }
+}
+
+##plot slopes
+fig <- ggplot(data = slopes, aes(x = Guild, y = Slope, color = factor(pond.fraction)))
+fig <- fig + geom_point(position= position_dodge(width = 0.5), size=3)
+fig <- fig + geom_errorbar(aes(ymin=Slope-se, ymax=Slope+se), size = 1.05, width=.5, position = position_dodge(width = 0.5))
+fig <- fig + ylab("Slope of ln(Count) ~ Date")
+fig <- fig + theme_classic()
+#fig <- fig + scale_y_continuous(breaks = function(x) seq(from = x[1],to = x[2],by = abs(x[2]-x[1])/10))
+fig <- fig + labs(color = "Proportion \nof sites")
+fig
+
+fig.slope<-fig
+
+#<-data.frame(MonthYear= rep(out.spread$MonthYear[945:946], 2), pondgroup=c("count", "count", "count.sub", "count.sub"))
+#dat.test$pred<-predict(object = lm.temp, newdata = dat.test)
+#dat.test$se<-predict(object = lm.temp, newdata = dat.test, se.fit = T)$se.fit
 
 ##ASSESSMENT 2: TEST POWER TO DETECT TRENDS WITH SUBSET OF PONDS AND/OR REDUCED SURVEY FREQUENCY
 
