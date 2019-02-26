@@ -118,7 +118,8 @@ ponds.poly<-rgdal::readOGR(dsn = "S:/Science/GIS/Salt Pond/all_salt_pond_grids_2
 
 ##check projections
 proj4string(ponds.poly); proj4string(land)
-land.utm <- spTransform(land, CRS("+init=epsg:4274")) # reproject
+land.utm <- spTransform(land, CRS("+init=epsg:3157")) # reproject
+proj4string(land.utm)
 
 ##example
 #https://cran.r-project.org/doc/contrib/intro-spatial-rl.pdf
@@ -128,7 +129,15 @@ land.utm <- spTransform(land, CRS("+init=epsg:4274")) # reproject
 
 plot(ponds.poly)
 plot(land.utm[land.utm$COUNTRY=="USA" & land.utm$STATE_CODE =="CA",], col="lightgrey", add=T)
-plot(ponds.poly, add=T, col="red")
+plot(ponds.poly, add=T, col="darkgrey")
+sel<-ponds.poly$Pond %in% c("A1", "A10", "E1", "M3")
+plot(ponds.poly[sel,], col="turquoise", add=T)
+
+map <- ggplot(data=ponds.poly)
+map <- map + geom_path(aes(long, lat, group=group)) + coord_equal()
+map <- map + geom_path(aes(long, lat, group=group), data=land.utm[land.utm$COUNTRY=="USA" & land.utm$STATE_CODE =="CA",])
+map <- map + geom_path(aes(long, lat, group=group), data=ponds.poly[ponds.poly$Pond %in% c("A1", "A10", "E1", "M3"),], color="turquoise")
+map
 
 ##ASSESSMENT 1: ALLIGNMENT OF SUBSET COUNTS WITH OVERALL COUNTS
 ##check which years have counts for all ponds
