@@ -127,16 +127,42 @@ proj4string(land.utm)
 #sel <- lnd$Partic_Per > 25
 #plot(lnd[ sel, ], col = "turquoise", add = TRUE) # add selected zones to map
 
-plot(ponds.poly)
-plot(land.utm[land.utm$COUNTRY=="USA" & land.utm$STATE_CODE =="CA",], col="lightgrey", add=T)
-plot(ponds.poly, add=T, col="darkgrey")
-sel<-ponds.poly$Pond %in% c("A1", "A10", "E1", "M3")
-plot(ponds.poly[sel,], col="turquoise", add=T)
+##clip land by pong bounding box
+##functions from https://gis.stackexchange.com/questions/46954/clip-spatial-object-to-bounding-box-in-r
+as.SpatialPolygons.bbox <- function( bbox, proj4stringFrom=CRS("+proj=longlat +datum=WGS84"), proj4stringTo=NULL ) {
+  # Create unprojected bbox as spatial object
+  bboxMat <- rbind( c(bbox['x','min'],bbox['y','min']), c(bbox['x','min'],bbox['y','max']), c(bbox['x','max'],bbox['y','max']), c(bbox['x','max'],bbox['y','min']), c(bbox['x','min'],bbox['y','min']) ) # clockwise, 5 points to close it
+  bboxSP <- SpatialPolygons( list(Polygons(list(Polygon(bboxMat)),"bbox")), proj4string=proj4stringFrom  )
+  if(!is.null(proj4stringTo)) {
+    bboxSP <- spTransform( bboxSP, proj4stringTo )
+  }
+  bboxSP
+}
 
-map <- ggplot(data=ponds.poly)
-map <- map + geom_path(aes(long, lat, group=group)) + coord_equal()
-map <- map + geom_path(aes(long, lat, group=group), data=land.utm[land.utm$COUNTRY=="USA" & land.utm$STATE_CODE =="CA",])
-map <- map + geom_path(aes(long, lat, group=group), data=ponds.poly[ponds.poly$Pond %in% c("A1", "A10", "E1", "M3"),], color="turquoise")
+box<-as.SpatialPolygons.bbox(bbox = summary(ponds.poly)$bbox, proj4stringFrom = CRS(proj4string(ponds.poly)), proj4stringTo = CRS(proj4string(land.utm)))
+land.clip<-gIntersection(spgeom1 = land.utm, spgeom2=box)
+
+#plot(ponds.poly)
+#plot(land.utm[land.utm$COUNTRY=="USA" & land.utm$STATE_CODE =="CA",], col="lightgrey", add=T)
+#plot(ponds.poly, add=T, col="darkgrey")
+#sel<-ponds.poly$Pond %in% c("A1", "A10", "E1", "M3")
+#plot(ponds.poly[sel,], col="turquoise", add=T)
+library(dplyr)
+
+ponds.poly.df<-ponds.poly
+ponds.poly.df@data$id <- rownames(ponds.poly.df@data)
+ponds.f <- fortify(ponds.poly.df, region = "id")
+ponds.df <- plyr::join(ponds.f, ponds.poly.df@data, by = "id")
+
+map <- ggplot(data=ponds.df) + coord_equal()
+map <- map + geom_polygon(aes(long, lat, group=group), data=land.clip, fill="light grey")
+map <- map + geom_polygon(aes(long, lat, group=group, fill=factor(Complex)), color="black")
+map <- map + geom_path(aes(long, lat, group=group), data=ponds.poly[ponds.poly$Pond %in% c("A1", "A10", "E1", "M3", "A2W"),], color="yellow", size=2)
+map <- map + scale_x_continuous(name = "Longitude", limits = c(summary(box)$bbox[1,1]-1, summary(box)$bbox[1,2]+1), expand = c(0,0))
+map <- map + scale_y_continuous(name = "Latitude", limits = c(summary(box)$bbox[2,1]-1, summary(box)$bbox[2,2]+1), expand = c(0,0))
+map <- map + theme_classic() #+ theme(panel.background = element_rect(fill= "grey"))
+map <- map + geom_path(aes(long, lat), data = box)
+map <- map + annotate("text", label = "San Francisco\n Bay", x = 575700, y = 4154000, size = 4, colour = "dark blue")
 map
 
 ##ASSESSMENT 1: ALLIGNMENT OF SUBSET COUNTS WITH OVERALL COUNTS
