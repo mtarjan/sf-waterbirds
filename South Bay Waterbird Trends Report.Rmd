@@ -1,0 +1,64 @@
+---
+title: "South Bay Waterbird Surveys: Status Update"
+subtitle: "Prepared for California State Coastal Conservancy and Santa Clara Valley Water District"
+author: "Max Tarjan"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output: 
+  word_document:
+    reference_docx: format.docx
+    pandoc_args: ["--smart"]
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+#source('Code_waterbird_trend_assessment.R')
+figure.num<-0
+table.num<-0
+```
+
+#BACKGROUND
+The South Bay Salt Pond Restoration Project (SBSPRP) is the largest tidal wetland restoration project on the West Coast of the Americas and aims to restore 50-90% of 15,100 acres of historic commercial salt evaporation ponds to tidal marsh in multiple decades. As an adaptive management project, the success of the SBSPRP depends greatly on using the best science to guide current and future management actions such that the resulting total project area supports a diverse species assemblage. In particular, assessments based on extensive monitoring are needed to fulfill SBSPRP Objective 1: “Create, restore, or enhance habitats of sufficient size, function, and appropriate structure to…[m]aintain current migratory bird species that utilize existing salt ponds and associated structures such as levees” (SBSPRP Final Environmental Impact Statement/Report 2007).
+
+##Objectives
+SFBBO has been monitoring waterbirds in SBSPRP sites and surrounding Cargill ponds since 2003, and our data are reported annually to the SBSPRP Management Team. Our task is to create an updated assessment of the status of waterbirds in the context of the SBSPRP’s targets for waterbird populations. 
+
+#Approach
+We coordinated with SBSPRP managers through a series of meetings to confirm targets for waterbird guilds and/or species. We then used 15 years of monitoring data and a literature review to assess these targets for migratory waterbirds in the South Bay Salt Pond Restoration Project. We further assessed the targets for nesting waterbirds using SFBBO’s 40-year dataset of colonially nesting waterbirds throughout the Bay Area. All analyses were performed following guidelines of reproducible research so future annual reports will recreate and build on these assessments.
+
+
+
+##Results
+
+
+#WORKS CITED
+Jari Oksanen, F. Guillaume Blanchet, Michael Friendly, Roeland Kindt, Pierre Legendre, Dan McGlinn, Peter R. Minchin, R. B. O'Hara, Gavin L. Simpson, Peter Solymos, M. Henry H. Stevens, Eduard Szoecs and Helene Wagner (2019). vegan: Community Ecology Package. R package version 2.5-4. https://CRAN.R-project.org/package=vegan
+
+Tarjan, L.M. & V. Heyse. 2018. Evaluation of Waterbird Monitoring Protocols for the South Bay Salt Pond Restoration Project. Report prepared for the South Bay Salt Pond Restoration Project Management Team.
+
+Wood, J., Page, G., Reiter, M., Liu, L., & Robinson-nilsen, C. (2010). Abundance and Distribution of Wintering Shorebirds in San Francisco Bay , 1990-2008 : Population Change and Informing Future Monitoring. Petaluma, CA.
+
+#TABLES
+Table `r table.num`.
+```{r, echo=F, warning=F, message=F}
+kable(, row.names = F)
+
+table.num<-table.num+1
+```
+
+#FIGURES
+```{r, echo=FALSE}
+knitr::include_graphics(path=str_c(file.path, "/fig.RUDU.2surveys.png"))
+figure.num<-figure.num+1
+```
+Fig `r figure.num`. 
+
+
+```{r, echo=F, fig.height=4, fig.width=6.5, dpi=300}
+print()
+figure.num<-figure.num+1
+```
+Figure `r figure.num`. 

@@ -1,5 +1,5 @@
 ---
-title: "South Bay Waterbird Surveys: Status Update & Evaluation of Monitoring Protocols"
+title: "South Bay Waterbird Surveys: Evaluation of Monitoring Protocols"
 subtitle: "Prepared for California State Coastal Conservancy and Santa Clara Valley Water District"
 author: "Max Tarjan"
 date: "`r format(Sys.Date(), '%B %d, %Y')`"
@@ -15,7 +15,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r, echo=FALSE, warning=FALSE, include=FALSE}
-#source('Code_waterbird_trend_assessment.R')
 #source('Code Waterbird Monitoring Methods Analysis 13Dec2018')
 figure.num<-0
 table.num<-0
@@ -25,26 +24,19 @@ table.num<-0
 The South Bay Salt Pond Restoration Project (SBSPRP) is the largest tidal wetland restoration project on the West Coast of the Americas and aims to restore 50-90% of 15,100 acres of historic commercial salt evaporation ponds to tidal marsh in multiple decades. As an adaptive management project, the success of the SBSPRP depends greatly on using the best science to guide current and future management actions such that the resulting total project area supports a diverse species assemblage. In particular, assessments based on extensive monitoring are needed to fulfill SBSPRP Objective 1: “Create, restore, or enhance habitats of sufficient size, function, and appropriate structure to…[m]aintain current migratory bird species that utilize existing salt ponds and associated structures such as levees” (SBSPRP Final Environmental Impact Statement/Report 2007).
 
 ##Objectives
-SFBBO has been monitoring waterbirds in SBSPRP sites and surrounding Cargill ponds since 2003, and our data are reported annually to the SBSPRP Management Team. Our first task is to create an updated assessment of the status of waterbirds in the context of the SBSPRP’s targets for waterbird populations. 
+SFBBO has been monitoring waterbirds in SBSPRP sites and surrounding Cargill ponds since 2003, and our data are reported annually to the SBSPRP Management Team. Our task is to assess ongoing monitoring efforts to ensure that they are both effective for evaluating SBSPRP targets and efficient to ensure sustainability. Specifically, we aimed to determine an approach that (1) is more resource efficient than current survey protocols, and (2) can be used to answer the question of whether waterbird populations in the South Bay are above or below targets set by the SBSPRP. We also sought protocols that (1) generate data that are directly comparable to counts from previous years, and (2) allow for simultaneous collection of other data types (e.g. percent of the pond bottom that is vegetated).
 
-Our second task is to assess ongoing monitoring efforts to ensure that they are both effective for evaluating SBSPRP targets and efficient to ensure sustainability. Specifically, we aimed to determine an approach that (1) is more resource efficient than current survey protocols, and (2) can be used to answer the question of whether waterbird populations in the South Bay are above or below targets set by the SBSPRP. We also sought protocols that (1) generate data that are directly comparable to counts from previous years, and (2) allow for simultaneous collection of other data types (e.g. percent of the pond bottom that is vegetated).
-
-#TASK 1 - South Bay Waterbird Population Trends
-##Approach
-We coordinated with SBSPRP managers through a series of meetings to confirm targets for waterbird guilds and/or species. We then used 15 years of monitoring data and a literature review to assess these targets for migratory waterbirds in the South Bay Salt Pond Restoration Project. We further assessed the targets for nesting waterbirds using SFBBO’s 40-year dataset of colonially nesting waterbirds throughout the Bay Area. All analyses were performed following guidelines of reproducible research so future annual reports will recreate and build on these assessments.
-
-#TASK 2 - Waterbird Survey Protocols
-##Approach
+#Approach
 We used power analyses and simulations informed by our existing dataset to explore the feasibility of decreasing survey effort using a subsetting protocol. We focused on a subset approach because previous analyses (Tarjan & Heyse 2018) concluded that sampling frequency should remain at current rates (two times in the peak season for a given species) in order to detect ten-year trends in waterbird abundance with sufficient power (beta = 0.80). We 1) researched approaches for decreasing survey effort by subsetting the sites, and 2) evaluated the effect of the subset protocol on our ability to detect trends following methods by Tarjan and Heyse (2018).
 
-###Subsetting Protocols and Trend Detection
+##Subsetting Protocols and Trend Detection
 The ideal subset of sites would yield counts that are representative of the population. Counts from a subset of sites can become biased if birds shift their locations over time. The potential for this "frame bias" (Bart et al. 2005) leaves researchers unsure of whether a decline occurred due to a decline in the larger population or due to movement away from the surveyed sites (i.e. the frame) over time. A second type of bias called selection bias arises when some sites cannot be surveyed due to access restrictions.
 
 Earlier work by Wood et al. (2010) simulated shorebird counts from sites within the San Francisco Bay Area to evaluate the accuracy and precision of eight subsetting protocols. They tested variations of random sampling, stratification by region such that each region was equally represented in the subsample, and site selection weighted by the abundance of shorebirds in historical data. Based on their assessment of accuracy and precision, they recommended random selection of sites that are weighted using historical data for annual surveys, and stipulated that remaining sites are surveyed every ten years to check for frame bias (i.e. movement of birds between sites). They concluded that with this scheme, survey effort could be reduced by up to 75% and still deliver accurate (+/- 20%) estimates of 20-year population trends at 0.05 and/or 0.15 power.
 
 We applied Wood et al.'s approach with modifications to the geographic scope, species, and detection criteria to identify feasible reductions in survey effort for the SBSPRP.  Previous analyses (Tarjan & Heyse 2018) revealed that survey frequency needs to remain at current levels (twice during the peak season for any given species) to detect Project targets. These results are in agreement with Wood et al.'s findings that decreasing survey effort by 50% (from every one to every two years) dramatically lowers power. An alternative approach to decrease survey effort is to survey fewer locations, which we evaluate here. We evaluated our ability to detect trends under sampling schemes where we sample 100%, 50% and 25% of survey sites.
 
-We assumed that one goal of subsetting sites is to have a collection of sites that is representative of the entire project footprint in terms of species composition and diversity. Upholding this assumption facilitiates comparison of new data with historical data. We used a similarity index to evaluate how representative counts in a subset are to counts in the entire sample. This similarity assessment was implemented using the bioenv function in the Vegan package (Oksanen et al. 2019) in R. We selected a set of sites with a rho value of at least 0.95 when compared with the full set of sites in terms of species composition and relative abundance. 
+Our first goal was to identify a subset of sites that would represent counts yielding a trend of waterbird counts over time of +/- 20% of the estimate from the full dataset (Wood et al. 2010). We assumed that another goal of subsetting sites is to have a collection of sites that is representative of the entire project footprint in terms of species composition and diversity. Upholding this assumption facilitiates comparison of new data with historical data. We used a similarity index to evaluate how representative counts in a subset are to counts in the entire sample. This similarity assessment was implemented using the bioenv function in the Vegan package (Oksanen et al. 2019) in R. We selected a set of sites with a rho value of at least 0.95 when compared with the full set of sites in terms of species composition and relative abundance. 
 
 The community was represented by a small number of ponds (<10), so we added sites of interest as defined by the Project Management Team, which comprised: `r wish.list`. Justification for inclusion of these ponds is provided in Appendix I. 
 
@@ -54,16 +46,21 @@ We then selected the best sets of sites based on current and future accessibilit
 
 <!--...habitat type = managed pond or restored tidal marsh...weighting takes into account multiple species...adapts based on which species are already covered?? somewhat stochastic weights??-->
 
-##Results
-###Site Subsets and Trend Detection
-Based on the similarity index, the community in the SBSPRP footprint was well-represented by the following ponds: **`r set.select`**. Average counts by guild for this subset of ponds compared with the entire set of ponds were very similar, with rho = `r round(sets2$order.by.best$rho[1],2)`. In addition to these `r length(set.select)` ponds, we manually added the following ponds based on the criteria described above: .
+#Results
+##Site Subsets and Trend Detection
+Based on the similarity index, the community in the SBSPRP footprint was well-represented by the following ponds: **`r set.select`**. Average counts by guild for this subset of ponds compared with the entire set of ponds were very similar, with rho = `r round(sets2$order.by.best$rho[1],2)`. In addition to these `r length(set.select)` ponds, we manually added the following ponds based on the criteria described above: `r wish.list`. Finally, we added
+
+Subsetting sites leads to counts that dampen the effects of increases and declines. This means that threshold percent changes for detection should be altered if data are only collected for a subset of sites. This also means that short-lived declines (over periods of three years) may be missed.
 
 
 
-###Preliminary Updates to Survey Methods
+##Preliminary Updates to Survey Methods
 During meetings of members of the SBSPRP Science Advisory Committee in 2018, it was determined that assigning birds to 250 m by 250 m grids within each pond was no longer necessary to address upcoming questions for the SBSPRP. The grid assignments were useful in addressing questions about habitat use within each pond. The committee determined that the community has gained a sufficient understanding of habitat use within the ponds, and that grid assignment is no longer needed. SFBBO eliminated this procedure from survey protocols in January 2019. This brief analysis addresses the question of whether ceasing assignment to grids affected the duration of the survey protocol. To date, SFBBO has conducted `r nrow(unique(subset(dat.sfbbo, subset = grids ==T, select=Survey)))` survey rounds with grid assignments, and `r nrow(unique(subset(dat.sfbbo, subset = grids ==F, select=Survey)))` survey rounds without grid assignments. A t-test comparing survey duration for surveys with versus without grid assignments showed that there is no detectable difference between survey duration using the two protocols (t = `r round(duration.test$statistic, 2)`, DF = `r round(duration.test$parameter, 2)`, p = `r round(duration.test$p.value, 2)`) (Figure 1).
 
-###Survey Cost
+#Recommendations
+##Survey Schedule
+
+##Survey Cost
 ```{r, echo=FALSE}
 cost.goal<-50000
 new.staff.hrs<-round((cost.goal - (91144.12-(2377.25+394)*0.7*mean(c(17.77*1.284,24.62*1.284))))/mean(c(17.77*1.284,24.62*1.284)),0)

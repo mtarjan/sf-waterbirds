@@ -209,14 +209,14 @@ out[is.na(out)]<-0
 ##compare trends of counts in all ponds to trends in counts from subset of ponds
 ##note that some ponds may not have been counted in all survey periods
 
-fig <- ggplot(data = subset(out, year >= 2005 & Season %in% c("Fall", "Winter")), aes(x = MonthYear, y = log(count+1), color=factor(pond.fraction)))
+fig <- ggplot(data = subset(out, year >= 2005 & Season %in% c("Winter")), aes(x = MonthYear, y = count, color=factor(pond.fraction)))
 fig <- fig + geom_point()
 fig <- fig + geom_smooth(method = "loess", se = F)
 fig <- fig + facet_wrap(facets = ~Guild, scales="free")
-fig <- fig + xlab("Date") + ylab("ln(Bird count)")
+fig <- fig + xlab("Date") + ylab("Bird count")
 fig <- fig + theme_classic()
 fig <- fig + theme(strip.background = element_rect(colour = "white", fill = "white"))
-fig <- fig + scale_y_continuous(breaks = function(x) round(seq(from = x[1],to = x[2],by = (x[2]-x[1])/10),2))
+fig <- fig + scale_y_continuous(breaks = function(x) round(seq(from = x[1],to = x[2],by = (x[2]-x[1])/10),0), expand = c(0, 1))
 fig <- fig + scale_x_datetime(date_breaks = "2 years", date_labels = "%Y")
 fig <- fig + theme(axis.text.x = element_text(angle = 45, hjust=1, color="black"), axis.text.y = element_text(color="black"))
 fig <- fig + labs(color = "Proportion \nof sites")
@@ -224,12 +224,14 @@ fig
 
 fig.loess<-fig
 
+png(filename = str_c(file.path, "/fig.loess.png"), units="in", width=6.5, height=5,  res=200);print(fig.loess); dev.off()
+
 ##test whether trends are different for all data versus pond subset
 slopes<-dim(0)
 for (f in 1:length(frac.sub)) {
   for (j in 1:length(unique(out$Guild))) {
     guild.temp<-unique(out$Guild)[j]
-    dat.temp<-subset(out, Guild==guild.temp & year >=2005 & pond.fraction==frac.sub[f])
+    dat.temp<-subset(out, Guild==guild.temp & year >=2005 & pond.fraction==frac.sub[f] & Season =="Winter")
     lm.all<-lm(formula = log(count+1) ~ MonthYear, data = dat.temp)
     slopes<-rbind(slopes, data.frame(Guild=guild.temp, pond.fraction=frac.sub[f], Slope= summary(lm.all)$coefficients[2,1], se = summary(lm.all)$coefficients[2,2]))
   }
@@ -243,6 +245,7 @@ fig <- fig + ylab("Slope of ln(Count) ~ Date")
 fig <- fig + theme_classic()
 #fig <- fig + scale_y_continuous(breaks = function(x) seq(from = x[1],to = x[2],by = abs(x[2]-x[1])/10))
 fig <- fig + labs(color = "Proportion \nof sites")
+fig <- fig + geom_errorbar(data = subset(slopes, pond.fraction==1), aes(ymin=(Slope-se)*0.9, ymax=(Slope+se)*1.1), color="dark grey", linetype="dashed")##box showing within 20% of slope estimate for all sites
 fig
 
 fig.slope<-fig
