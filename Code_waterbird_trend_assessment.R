@@ -62,9 +62,10 @@ for (j in 1:nrow(targets)) {
   count.trends<-rbind(count.trends, dat.temp)
 }
 
+guilds.plot<-unique(targets$Species.Guild)
 
 ##see all guilds
-fig <- ggplot(data = subset(count.trends, Species.Guild %in% guilds.plot[[j]]), aes(x = MonthYear, y = abun, color=footprint))
+fig <- ggplot(data = subset(count.trends, Species.Guild %in% guilds.plot), aes(x = MonthYear, y = abun, color=footprint))
 fig <- fig + geom_point()
 fig <- fig + geom_smooth(method = "loess", se = F)
 fig <- fig + facet_wrap(Species.Guild~Season, scales= "free")
@@ -89,7 +90,7 @@ for (j in 1:length(guilds.plot)) {
   fig <- fig + facet_wrap(Species.Guild~Season, scales= "free")
   fig <- fig + theme_classic()
   fig <- fig + scale_color_manual(values=c("black", "forestgreen", "blue"), name="Pond area")
-  fig <- fig + geom_hline(data = subset(targets, Species.Guild %in% guilds.plot), linetype = "dashed", aes(yintercept=Baseline))
+  fig <- fig + geom_hline(data = subset(targets, Species.Guild %in% guilds.plot[[j]]), linetype = "dashed", aes(yintercept=Baseline))
   fig <- fig + theme(axis.text.x = element_text(angle = 45, hjust=1, color="black"), axis.text.y = element_text(color="black"))
   fig <- fig + scale_x_datetime(date_breaks = "2 years", date_labels = "%Y")
   fig <- fig + scale_y_continuous(breaks = function(x) round(seq(from = 0,to = x[2]*1.2,by = (x[2]-0)/10),0), expand = c(0, 0))
