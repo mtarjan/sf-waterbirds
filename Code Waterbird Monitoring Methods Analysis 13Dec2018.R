@@ -187,7 +187,12 @@ map <- map + annotate("text", label = "San Francisco\n Bay", x = 575700, y = 415
 #map <- map + theme(legend.position = c(0.85, 0.85))
 map <- map + facet_wrap(facets = ~frac)
 map <- map + labs(fill='Pond Complex') 
+#map <- map + theme(axis.text.x=element_text(angle = 90, vjust = 0.5, hjust = 1, size = 8), axis.text.y = element_text(size=8))
+map <- map + theme(axis.text.x=element_blank(), axis.text.y = element_blank())
+map <- map + theme(legend.position = "bottom")
 map
+
+png(filename = str_c(file.path, "/map.png"), units="in", width=6.5, height=9,  res=400);print(map); dev.off()
 
 ##ASSESSMENT 1: ALLIGNMENT OF SUBSET COUNTS WITH OVERALL COUNTS
 ##check which years have counts for all ponds
@@ -249,6 +254,8 @@ fig <- fig + geom_errorbar(data = subset(slopes, pond.fraction==1), aes(ymin=(Sl
 fig
 
 fig.slope<-fig
+
+png(filename = str_c(file.path, "/fig.slope.png"), units="in", width=6.5, height=5,  res=200);print(fig.slope); dev.off()
 
 #<-data.frame(MonthYear= rep(out.spread$MonthYear[945:946], 2), pondgroup=c("count", "count", "count.sub", "count.sub"))
 #dat.test$pred<-predict(object = lm.temp, newdata = dat.test)

@@ -20,8 +20,18 @@ LEFT OUTER JOIN SpeciesCodes AS s ON d.SpeciesCode = s.SpeciesCode"
 
 dat<-sqlQuery(con, qry); head(dat) ##import the queried table
 
+##import zero bird count data
+qry<-
+  "SELECT d.MonthYear, d.Season, d.YearID, d.CountDate, d.Pond, d.Agency, d.PondGrid, d.SpeciesCode, d.TotalAbundance, s.StandardGuild, d.CountStartTime, d.CountEndTime 
+FROM SBSPBirdData_ListOfNoBirdPondCounts AS d
+LEFT OUTER JOIN SpeciesCodes AS s ON d.SpeciesCode = s.SpeciesCode" 
+
+dat2<-sqlQuery(con, qry); head(dat2) ##import the queried table
+
 ##when finished with db, close the connection
 odbcCloseAll()
+
+dat<-rbind(dat, dat2)
 
 ##format data
 dat$year<-format(dat$MonthYear, "%Y")

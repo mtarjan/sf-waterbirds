@@ -29,9 +29,15 @@ SFBBO has been monitoring waterbirds in SBSPRP sites and surrounding Cargill pon
 #Approach
 We coordinated with SBSPRP managers through a series of meetings to confirm targets for waterbird guilds and/or species. We then used 15 years of monitoring data and a literature review to assess these targets for migratory waterbirds in the South Bay Salt Pond Restoration Project. We further assessed the targets for nesting waterbirds using SFBBO’s 40-year dataset of colonially nesting waterbirds throughout the Bay Area. All analyses were performed following guidelines of reproducible research so future annual reports will recreate and build on these assessments.
 
+##Waterbird Surveys
+We conducted waterbird surveys at each of the 82 ponds in the Alviso, Coyote Hills, Dumbarton, Eden Landing, Mowry, and Ravenswood complexes. We performed surveys exclusively at high tide, defined as a tide of 4.0 feet or greater at the Alameda Creek Tide Sub-Station (37° 35.70' N, 122° 08.70' W). During each survey, we observed birds from the nearest drivable road or levee using spotting scopes and binoculars. We counted the total number of individuals of all waterbird species present on each pond and recorded the location of each using aerial site photos superimposed with 250 m2 individually labeled grids. For each grid-scale sighting of an individual bird or bird group of the same species, we recorded behavioral data (whether the bird or bird group was foraging or roosting). For roosting birds only, we recorded whether we observed the bird or bird group on a levee, an island, or a manmade/artificial structure (e.g., blind, fence post).  Pond surveys were randomized as follows: ponds were split into 6 groups based on geographic location and pond complex (Newark & Mowry, Northern Eden Landing, Southern Eden Landing, Ravenswood, Western Alviso, Eastern Alviso), a random list of these groups was generated, field crews surveyed any accessible ponds within 1 area each survey day and moved to the next area if no ponds were accessible in that area. All 82 ponds were surveyed 7 times per year and during each of the 7 survey periods, all ponds were surveyed within 6 weeks.
 
+We identified birds to the species level whenever possible, with the exception of Long-billed and Short-billed Dowitchers (identified as Dowitchers), and Greater and Lesser Scaup (identified as Scaup). When species identification was not possible, we identified birds to genus (e.g., Calidris) or foraging guild (e.g., gulls, small shorebirds, medium shorebirds, phalaropes).
 
-##Results
+##Statistics
+We visualized waterbird trends by selecting the counts within the peak season for each species/guild (i.e. the season when the species/guild was most abundant on average) and fitting a curve using non-parametric Loess local weighted regression in the ggplot2 package in R. We then assessed directional changes in counts over time by fitting a linear model to the log-transformed counts. We used estimates from the linear model to compare our most recent counts (i.e. 2017) to targets and triggers when available.
+
+#Results
 
 
 #WORKS CITED
@@ -58,7 +64,7 @@ Fig `r figure.num`.
 
 
 ```{r, echo=F, fig.height=4, fig.width=6.5, dpi=300}
-print()
+print(fig.trend.loess)
 figure.num<-figure.num+1
 ```
 Figure `r figure.num`. 
