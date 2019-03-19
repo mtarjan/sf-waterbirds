@@ -31,11 +31,6 @@ dat2<-sqlQuery(con, qry); head(dat2) ##import the queried table
 ##when finished with db, close the connection
 odbcCloseAll()
 
-dat<-rbind(dat, dat2)
-
-##format data
-dat$year<-format(dat$MonthYear, "%Y")
-
 ##fix speciescode typos
 dat$SpeciesCode<-as.character(dat$SpeciesCode)
 translator <- c('DCCo' = 'DCCO', 
@@ -47,8 +42,30 @@ acronyms<-translator[dat$SpeciesCode]
 dat$SpeciesCode[which(acronyms!='NA')]<-acronyms[which(acronyms!='NA')]
 
 ##add counts of zero for "none" category??
-##stopped using "none" categroy in 2015 on. what was it replaced with? victoria will know how we enter these data into our database, but how did it get translated into USGS database when we transferred the data over?
-##none category appears to apply at the GRID level
+##2015 on "none" category doesn't appear in data includingnobirdcounts, only in the table for no bird count info
+##none category appears to apply at the GRID level through 2014
+##set all pond grids for species ==none to "NOGRID"
+dat2$PondGrid<-as.character(dat2$PondGrid)
+dat2$PondGrid[which(dat2$SpeciesCode=="NONE")]<-"NOGRID"
+##select unique dat.complete entries
+dat2<-unique(dat2)
+
+spp.guild<-unique(subset(dat, SpeciesCode != "NONE", select=c(SpeciesCode, StandardGuild))) ##get unique species and guild combos
+
+out<-dim(0)
+for (j in 1:nrow(dat2)) { ##for each pond/survey where no birds were observed
+  dat.temp<-dat2[j,] %>% dplyr::slice(rep(1:n(), each = nrow(spp.guild)))
+  ##add an observation of 0 for each species
+  dat.temp$SpeciesCode<-spp.guild$SpeciesCode
+  dat.temp$StandardGuild<-spp.guild$StandardGuild
+  out<-rbind(out, dat.temp)
+}
+
+##add observations of zero to all data, after removing existing and incomplete zeros from data
+dat<-rbind(subset(dat, SpeciesCode!="NONE"), out)
+
+##format data
+dat$year<-format(dat$MonthYear, "%Y")
 
 dat.complete<-dat
 
@@ -59,6 +76,7 @@ dat.complete$season.yr[which(format(dat.complete$MonthYear, "%m") %in% c("01", "
 ##add duration of survey
 dat.complete$duration.mins<-as.numeric(difftime(time2 = dat.complete$CountStartTime, time1 = dat.complete$CountEndTime, units="mins"))
 dat.complete$duration.mins[which(strftime(dat.complete$CountStartTime, format="%H:%M:%S")=="00:00:00" | strftime(dat.complete$CountEndTime, format="%H:%M:%S")=="00:00:00")]<-NA ##set unknown durations to NA
+
 
 ##LOAD SFBBO WATERBIRD DATA
 wb.sfbbo<-"S:/Science/Waterbird/Databases - enter data here!/Cargill Pond Surveys/Cargill Pond Surveys.accdb" ##database filepath
