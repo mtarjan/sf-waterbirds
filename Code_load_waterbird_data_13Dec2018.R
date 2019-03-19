@@ -6,6 +6,10 @@
 library(RODBC) ##required to connect to Access database
 library(stringr)
 
+##CREATE FOLDER FOR FIGURES
+dir.create(str_c("figures.", Sys.Date()))
+file.path<-str_c("figures.", Sys.Date())
+
 ##LOAD SALT POND DATA
 wb<-"S:/Science/Waterbird/Databases - enter data here!/Cargill Pond Surveys/USGS data from Cheryl 29Jan2018/USGS_SFBBO_pond_data_26Feb2018.accdb" ##database filepath
 
@@ -104,3 +108,84 @@ dat.sfbbo$month<-format(dat.sfbbo$Date, "%m")
 dat.sfbbo$duration.mins<-as.numeric(difftime(time2 = dat.sfbbo$`Start Time`, time1 = dat.sfbbo$`End Time`, units="mins"))
 dat.sfbbo$duration.mins[which(strftime(dat.sfbbo$`Start Time`, format="%H:%M:%S")=="00:00:00" | strftime(dat.sfbbo$`End Time`, format="%H:%M:%S")=="00:00:00")]<-NA ##set unknown durations to NA
 dat.sfbbo$total.birds<-dat.sfbbo$`#Foraging` + dat.sfbbo$`#Roosting` + dat.sfbbo$`#On an Island` + dat.sfbbo$`#On a Levee` + dat.sfbbo$`#On Manmade`
+
+
+##LOAD COLONIAL WATERBIRD DATA
+wb<-"S:/Science/Waterbird/Databases - enter data here!/Colonial Waterbird Surveys/ColonialWaterbird.accdb"
+con<-odbcConnectAccess2007(wb) ##open connection to database
+
+qry<-
+  "SELECT MetadataColonyLocation.ColonyName, DataSurveyInformation.SurveyDate, year(DataSurveyInformation.SurveyDate) AS year, MetadataSpeciesCode.SpeciesCode, DataSurveySummary.TotalNestCount, DataSurveySummary.TotalAdultCount, DataSurveySummary.TotalYoungCount 
+FROM ((DataSurveySummary 
+LEFT OUTER JOIN MetadataSpeciesCode 
+ON DataSurveySummary.SpeciesID = MetadataSpeciesCode.SpeciesID)
+LEFT OUTER JOIN DataSurveyInformation
+ON DataSurveySummary.SurveyID = DataSurveyInformation.SurveyID)
+LEFT OUTER JOIN MetadataColonyLocation 
+ON DataSurveyInformation.ColonyID = MetadataColonyLocation.ColonyID
+WHERE DataSurveySummary.TotalNestCount <> NULL"
+
+dat<-sqlQuery(con, qry)#; head(dat) ##import the queried table
+
+qry<-
+  "SELECT MetadataColonyLocation.ColonyName, MetadataSpeciesCode.SpeciesCode, DataAnnualSummary.SurveyYear, DataAnnualSummary.PeakNumberofNests, DataAnnualSummary.PeakNestDate, DataAnnualSummary.PeakNumberOfAdults, DataAnnualSummary.PeakAdultDate, DataAnnualSummary.EstimatedNumberBreeding, DataAnnualSummary.PeakNumberofYoung, DataAnnualSummary.PeakYoungDate
+FROM (DataAnnualSummary
+LEFT OUTER JOIN MetadataColonyLocation
+ON DataAnnualSummary.ColonyID = MetadataColonyLocation.ColonyID)
+LEFT OUTER JOIN MetadataSpeciesCode
+ON DataAnnualSummary.SpeciesID = MetadataSpeciesCode.SpeciesID"
+
+dat.annual<-sqlQuery(con, qry)#; head(dat) ##import the queried table
+
+##get location info
+qry<-
+  "SELECT ColonyID, ColonyName, Latitude, Longitude, Datum, Notes
+FROM MetadataColonyLocation"
+
+locs<-sqlQuery(con, qry)
+
+##when finished with db, close the connection
+odbcCloseAll()
+
+out<-dim(0)
+##calculate peak nest counts for 2015 &2017
+for (y in 2015:2018) {
+  dat.temp<-subset(dat, year==y)
+  for (i in 1:length(unique(dat.temp$SpeciesCode))) {
+    sp.temp<-unique(dat.temp$SpeciesCode)[i]
+    dat.temp2<-subset(dat.temp, SpeciesCode==sp.temp)
+    for (j in 1:length(unique(dat.temp2$ColonyName))) {
+      colony.temp<-unique(dat.temp2$ColonyName)[j]
+      dat.temp3<-subset(dat.temp2, ColonyName==colony.temp)
+      if (nrow(dat.temp3)>0){
+        ##peak nest
+        nest.temp<-dat.temp3$TotalNestCount[which.max(dat.temp3$TotalNestCount)]
+        nest.date.temp<-dat.temp3$SurveyDate[which.max(dat.temp3$TotalNestCount)]
+        ##adults
+        adult.temp<-dat.temp3$TotalAdultCount[which.max(dat.temp3$TotalAdultCount)]
+        adult.date.temp<-dat.temp3$SurveyDate[which.max(dat.temp3$TotalAdultCount)]
+        ##peak young
+        young.temp<-dat.temp3$TotalYoungCount[which.max(dat.temp3$TotalYoungCount)]
+        young.date.temp<-dat.temp3$SurveyDate[which.max(dat.temp3$TotalYoungCount)]
+        ##replace length 0 with NA
+        if (length(nest.temp)==0) {nest.temp<-NA; nest.date.temp<-NA}
+        if (length(adult.temp)==0) {adult.temp<-NA; adult.date.temp<-NA}
+        if (length(young.temp)==0) {young.temp<-NA; young.date.temp<-NA}
+        
+        ##assign to dataframe
+        out.temp<-data.frame(ColonyName=colony.temp, SpeciesCode=sp.temp, SurveyYear=y, PeakNumberofNests=nest.temp, PeakNestDate=nest.date.temp, PeakNumberOfAdults=adult.temp, PeakAdultDate=adult.date.temp, EstimatedNumberBreeding=nest.temp*2, PeakNumberofYoung=young.temp, PeakYoungDate=young.date.temp)
+        if (is.null(out)) {
+          out<-out.temp
+        } else {
+          out<-rbind(out, out.temp)
+        }
+      }
+    }
+  }
+}
+
+dat.peak<-rbind(dat.annual, out)
+
+##add locations
+##add locs to dat.peak
+dat.peak.locs<-dplyr::left_join(x=dat.peak, y=subset(locs, select=c(ColonyName, Latitude, Longitude)), by = c("ColonyName","ColonyName"))

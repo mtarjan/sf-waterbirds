@@ -9,10 +9,6 @@ library(ggplot2)
 #library(stringr)
 library(tidyr) ##required for spread
 
-##CREATE FOLDER FOR FIGURES
-dir.create(str_c("figures.", Sys.Date()))
-file.path<-str_c("figures.", Sys.Date())
-
 if (exists("dat.complete")==F) {
   source('Code_load_waterbird_data_13Dec2018.R')
 }

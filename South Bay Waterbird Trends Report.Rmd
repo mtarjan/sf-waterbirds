@@ -38,6 +38,8 @@ We identified birds to the species level whenever possible, with the exception o
 We visualized waterbird trends by selecting the counts within the peak season for each species/guild (i.e. the season when the species/guild was most abundant on average) and fitting a curve using non-parametric Loess local weighted regression in the ggplot2 package in R. We then assessed directional changes in counts over time by fitting a linear model to the log-transformed counts. We used estimates from the linear model to compare our most recent counts (i.e. 2017) to targets and triggers when available.
 
 #Results
+##Breeding Bird Results
+SFBBO's Colonial Waterbird Monitoring Program tracked waterbird breeding colonies at `r length(sbsprp.sites$ColonyName)` sites within the SBSPRP, namely: ` r sbsprp.sites$ColonyName`. COnsistency in coverage varied. Notably, some important breeding sites were not visited as a part of this program in later years, as they were undergoing intensive study by our partner organization, USGS. Combining information will be essential for determining larger-scale trends in waterbird nesting. Due to inconsistency in coverage, we were unable to sum counts across colonies. We therefore approached analyses at the colony level. 
 
 
 #WORKS CITED
