@@ -81,6 +81,18 @@ dat.complete$season.yr[which(format(dat.complete$MonthYear, "%m") %in% c("01", "
 dat.complete$duration.mins<-as.numeric(difftime(time2 = dat.complete$CountStartTime, time1 = dat.complete$CountEndTime, units="mins"))
 dat.complete$duration.mins[which(strftime(dat.complete$CountStartTime, format="%H:%M:%S")=="00:00:00" | strftime(dat.complete$CountEndTime, format="%H:%M:%S")=="00:00:00")]<-NA ##set unknown durations to NA
 
+dat.E<-dat.complete
+##REPLACE B WITH E FOR EDEN
+dat.E$Pond<-str_c(gsub(pattern = "B", replacement = "E", x = str_sub(dat.E$Pond, 1, 1)), str_sub(dat.E$Pond, 2))
+dat.complete<-dat.E
+
+##add footprint
+dat.complete$complex<-str_sub(dat.complete$Pond, 1, 1)
+dat.complete$footprint<-"SBSPRP"
+dat.complete$footprint[which(dat.complete$complex %in% c("M", "N"))]<-"Salt ponds"
+dat2<-subset(dat.complete, MonthYear >= min(subset(dat.complete, footprint=="Salt ponds")$MonthYear)); dat2$footprint<-"All"
+dat.complete<-rbind(dat.complete, dat2)
+
 
 ##LOAD SFBBO WATERBIRD DATA
 wb.sfbbo<-"S:/Science/Waterbird/Databases - enter data here!/Cargill Pond Surveys/Cargill Pond Surveys.accdb" ##database filepath

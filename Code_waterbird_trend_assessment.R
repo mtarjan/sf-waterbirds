@@ -17,12 +17,7 @@ if (exists(x="dat.complete")==F) {
   source('Code_load_waterbird_data_13Dec2018.R')
 }
 head(dat.complete)
-dat<-dat.complete
-dat$complex<-str_sub(dat$Pond, 1, 1)
-dat$footprint<-"SBSPRP"
-dat$footprint[which(dat$complex %in% c("M", "N"))]<-"Salt ponds"
-dat2<-subset(dat, MonthYear >= min(subset(dat, footprint=="Salt ponds")$MonthYear)); dat2$footprint<-"All"
-dat<-rbind(dat, dat2)
+dat<-data.complete
 
 ##sum by species/guild, survey, and complex
 dat.guild<-dat %>% group_by(MonthYear, Season, year, season.yr, footprint, StandardGuild) %>% dplyr::summarise(abun=sum(TotalAbundance, na.rm=T)) %>% data.frame()

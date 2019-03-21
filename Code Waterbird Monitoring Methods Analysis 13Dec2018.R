@@ -13,14 +13,16 @@ if (exists("dat.complete")==F) {
   source('Code_load_waterbird_data_13Dec2018.R')
 }
 head(dat.complete)
-dat.E<-dat.complete
-##REPLACE B WITH E FOR EDEN
-dat.E$Pond<-str_c(gsub(pattern = "B", replacement = "E", x = str_sub(dat.E$Pond, 1, 1)), str_sub(dat.E$Pond, 2))
-
-dat.complete<-dat.E
 
 ##LOAD POND CATEGORY DATA (EG BREACHED, MANAGED)
 pond.cat<-read.csv("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2019 Waterbird Trend Assessment/SBSP pond categories.csv")
+##replace B with E for eden ponds
+pond.cat.E<-pond.cat
+##REPLACE B WITH E FOR EDEN
+pond.cat.E$POND<-str_c(gsub(pattern = "B", replacement = "E", x = str_sub(pond.cat.E$POND, 1, 1)), str_sub(pond.cat.E$POND, 2))
+pond.cat<-pond.cat.E
+
+
 wish.list<-c("RSF2U1", "RSF2U2", "RSF2U3", "RSF2U4", "A16", "A17", "A19", "A8", "E12", "E13", "E9", "E10", "R3", "R4", "A1", "E6", "E6C", "E4C", "E5C") ##list of ponds that managers want to include in subset based on meeting with PMT in Feb 2019
 
 ##SUBSET SURVEY SITES
@@ -36,7 +38,7 @@ library(vegan)
 ##but pete said the matrix is a similarity matrix that is sp by sp. but maybe that's what the program creates in the background.
 source("Code bvstep function.R")
 
-guildxsite<-subset(dat.complete, StandardGuild %in% c("HERON", "MEDSHORE","FISHEAT","DABBLER","DIVER","GULL","TERN","EAREDGR","SMSHORE","PHAL") & str_sub(Pond, 1,1) %in% c("A", "E", "R")) %>% group_by(MonthYear, Pond, StandardGuild) %>% dplyr::summarise(abun=sum(TotalAbundance)) %>% data.frame() %>% group_by(Pond, StandardGuild) %>% dplyr::summarise(av.abun=mean(abun, na.rm=T)) %>% data.frame() %>% spread(key = Pond, value = av.abun, fill = 0) #rows are guilds and columns are sites
+guildxsite<-subset(dat.complete, StandardGuild %in% c("HERON", "MEDSHORE","FISHEAT","DABBLER","DIVER","GULL","TERN","EAREDGR","SMSHORE","PHAL") & footprint=="SBSPRP") %>% group_by(MonthYear, Pond, StandardGuild) %>% dplyr::summarise(abun=sum(TotalAbundance)) %>% data.frame() %>% group_by(Pond, StandardGuild) %>% dplyr::summarise(av.abun=mean(abun, na.rm=T)) %>% data.frame() %>% spread(key = Pond, value = av.abun, fill = 0) #rows are guilds and columns are sites
 guildxsite<-subset(guildxsite, select=-StandardGuild) ##remove the guild name
 
 #sets <- bioenv(comm = guildxsite[,1:15], env = guildxsite[,1:15]) ##require any kind of standardizing transformation?
@@ -82,13 +84,13 @@ set.select2<-unique(c(set.select, wish.list))
 ##ADD PONDS USING WEIGHTED RANDOM SELECTION BASED ON GUILD/SPECIES ABUNDANCE
 
 ##species counts by survey (i.e. monthyear) and pond
-dat.pond<-dat.complete %>% group_by(year, season.yr, MonthYear, Season, Pond, StandardGuild) %>% dplyr::summarise(abun=sum(TotalAbundance)) %>% data.frame()
+dat.pond<-subset(dat.complete, footprint=="All") %>% group_by(year, season.yr, MonthYear, Season, Pond, StandardGuild) %>% dplyr::summarise(abun=sum(TotalAbundance)) %>% data.frame()
 
 ##take the average abundance by pond and species across all surveys
 dat.pond.av<-dat.pond %>% group_by(Pond, StandardGuild) %>% dplyr::summarise(abun=mean(abun)) %>% data.frame()
 
-##select representative historical abundances by pond. for now just use one survey and a few species. eventually need to do this by guild
-speciesOI<-c("SMSHORE", "DABBLER", "DIVER", "EAREDGR", "FISHEAT", "TERN") ##species of interest
+##select representative historical abundances by pond
+speciesOI<-c("SMSHORE", "DABBLER", "DIVER", "EAREDGR", "PHAL", "MEDSHORE", "TERN", "GULL") ##species of interest
 dat.pond.av<-subset(dat.pond.av, StandardGuild %in% speciesOI)
 
 #sub.n<-round(length(levels(dat.pond$Pond))*0.5/length(unique(dat.pond$StandardGuild)),0) ##number of ponds to sample for each species = total number of ponds * fraction of ponds to survey / number of species
@@ -99,7 +101,7 @@ for (j in 1:1000) {
   sp.temp<-unique(dat.pond.av$StandardGuild)[sample(x = 1:length(unique(dat.pond.av$StandardGuild)), 1)]
   dat.temp<-subset(dat.pond.av, StandardGuild==sp.temp)
   ##natural log-total as the continuous stratification weight to even the sample selection probabilities (Wood et al 2010)
-  dat.temp$ln.abun<-log(dat.temp$abun)
+  dat.temp$ln.abun<-log(dat.temp$abun+1)
   sample.temp<-as.character(sample(dat.temp$Pond, size=1, replace=F, prob=dat.temp$ln.abun)) ##randomly sample "top" ponds for that species
   ##add it to the top for the other species
   ponds.subset.ordered<-unique(c(ponds.subset.ordered, sample.temp))
@@ -109,7 +111,7 @@ ponds.subset.ordered ##get all ponds in order of preference for subset
 
 
 ##ASSESSMENT OF SUBSET
-frac.sub<-c(0.3, 0.4, 0.5, 0.7, 1) ##fraction of ponds to survey
+frac.sub<-c(0.3, 0.4, 0.5, 0.6, 0.7, 1) ##fraction of ponds to survey
 
 ##create a map of subsets
 library(rgdal)
@@ -125,9 +127,6 @@ proj4string(land.utm)
 
 ##example
 #https://cran.r-project.org/doc/contrib/intro-spatial-rl.pdf
-#plot(lnd, col = "lightgrey") # plot the london_sport object
-#sel <- lnd$Partic_Per > 25
-#plot(lnd[ sel, ], col = "turquoise", add = TRUE) # add selected zones to map
 
 ##clip land by pong bounding box
 ##functions from https://gis.stackexchange.com/questions/46954/clip-spatial-object-to-bounding-box-in-r
@@ -161,6 +160,7 @@ ponds.f <- fortify(ponds.poly.df, region = "id")
 ponds.df <- plyr::join(ponds.f, ponds.poly.df@data, by = "id")
 ponds.df$Pond<-gsub(pattern = "N4Aa", replacement = "N4AA", x = ponds.df$Pond)
 ponds.df$Pond<-gsub(pattern = "N4Ab", replacement = "N4AB", x = ponds.df$Pond)
+ponds.df$Pond<-gsub(pattern = "R5S", replacement = "RS5", x = ponds.df$Pond)
 
 ##create a layer that identifies which ponds to include at each percent level
 ponds.per<-dim(0)
@@ -189,6 +189,32 @@ map <- map + theme(legend.position = "bottom")
 map
 
 png(filename = str_c(file.path, "/map.png"), units="in", width=6.5, height=9,  res=400);print(map); dev.off()
+
+##TABLE OF POND TYPES INCLUDED IN SUBSET
+cat.table<-data.frame(Subset=frac.sub, Managed=NA, Breached=NA, Breached.PhaseII=NA, Reconfigured=NA, Reconfigured.PhaseII = NA, Salt.pond=NA)
+for (j in 1:nrow(cat.table)) {
+  #ponds.temp<-unique(subset(ponds.per, frac==cat.table$Subset[j])$Pond)
+  ponds.temp<-ponds.subset.ordered[1:round(length(ponds.subset.ordered)*cat.table$Subset[j], 0)]
+  ponds.temp<-subset(pond.cat, POND %in% ponds.temp)
+  
+  ##number of ponds sampled / number of ponds in that category
+  ##Managed
+  cat.table$Managed[j]<-round(nrow(subset(ponds.temp, category=="Managed"))/nrow(subset(pond.cat, category=="Managed"))*100,0)
+  
+  ##Breached
+  cat.table$Breached[j]<-round(nrow(subset(ponds.temp, category=="Breached" & timing %in% c("Phase 1", "Initial Stewardship Plan", "breached")))/nrow(subset(pond.cat, category=="Breached" & timing %in% c("Phase 1", "Initial Stewardship Plan", "breached")))*100,0)
+  cat.table$Breached.PhaseII[j]<-round(nrow(subset(ponds.temp, category=="Breached" & timing =="Phase 2"))/nrow(subset(pond.cat, category=="Breached" & timing =="Phase 2"))*100,0)
+  
+  ##Reconfigured
+  cat.table$Reconfigured[j]<-round(nrow(subset(ponds.temp, category=="Reconfigured" & timing =="Phase 1"))/nrow(subset(pond.cat, category=="Reconfigured" & timing == "Phase 1"))*100,0)
+  cat.table$Reconfigured.PhaseII[j]<-round(nrow(subset(ponds.temp, category=="Reconfigured" & timing =="Phase 2"))/nrow(subset(pond.cat, category=="Reconfigured" & timing == "Phase 2"))*100,0)
+  
+  ##Salt Pond
+  cat.table$Salt.pond[j]<-round(nrow(subset(ponds.temp, category=="Salt pond"))/nrow(subset(pond.cat, category=="Salt pond"))*100,0)
+}
+
+cat.table
+
 
 ##ASSESSMENT 1: ALLIGNMENT OF SUBSET COUNTS WITH OVERALL COUNTS
 ##check which years have counts for all ponds
@@ -264,7 +290,7 @@ png(filename = str_c(file.path, "/fig.slope.png"), units="in", width=6.5, height
 ##depends on sample size (n), probability of type 1 error (alpha), and magnitude of difference between null hypothesis and reality (effect size, ie rate of change, r); also depends on measurement error (CV, coefficient of variation of abundance estimate, can be estimated by residual variance about the regression line)
 
 ##species counts by unique survey
-dat.spp<- subset(dat.complete, Pond %in% ponds.subset.ordered[1:(round(85*frac.sub, 0))]) %>% group_by(year, season.yr, MonthYear, Season, SpeciesCode) %>% dplyr::summarise(abun=sum(TotalAbundance)) %>% data.frame()
+dat.spp<- subset(dat.complete, footprint=="All" & Pond %in% ponds.subset.ordered[1:(round(85*frac.sub, 0))]) %>% group_by(year, season.yr, MonthYear, Season, SpeciesCode) %>% dplyr::summarise(abun=sum(TotalAbundance)) %>% data.frame()
 
 ##average counts by season and species
 dat.season<- dat.spp %>% group_by(Season, season.yr, SpeciesCode) %>% dplyr::summarise(mean=round(mean(abun),0)) %>% data.frame()

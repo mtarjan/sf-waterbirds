@@ -82,6 +82,13 @@ Tarjan, L.M. & V. Heyse. 2018. Evaluation of Waterbird Monitoring Protocols for 
 Wood, J., Page, G., Reiter, M., Liu, L., & Robinson-nilsen, C. (2010). Abundance and Distribution of Wintering Shorebirds in San Francisco Bay , 1990-2008 : Population Change and Informing Future Monitoring. Petaluma, CA.
 
 #TABLES
+Table `r table.num`. Percent of each pond type included in the subset for multiple levels of site subsets.
+```{r, echo=F, warning=F, message=F}
+kable(cat.table, row.names = F)
+
+table.num<-table.num+1
+```
+
 Table `r table.num`.
 ```{r, echo=F, warning=F, message=F}
 kable(power.table.compare, row.names = F)
@@ -91,10 +98,16 @@ table.num<-table.num+1
 
 #FIGURES
 ```{r, echo=FALSE}
-knitr::include_graphics(path=str_c(file.path, "/fig.RUDU.2surveys.png"))
+knitr::include_graphics(path=str_c(file.path, "/map.png"))
 figure.num<-figure.num+1
 ```
-Fig `r figure.num`. 
+Fig `r figure.num`.
+
+```{r, echo=FALSE}
+knitr::include_graphics(path=str_c(file.path, "/fig.loess.png"))
+figure.num<-figure.num+1
+```
+Fig `r figure.num`.
 
 
 ```{r, echo=F, fig.height=4, fig.width=6.5, dpi=300}
