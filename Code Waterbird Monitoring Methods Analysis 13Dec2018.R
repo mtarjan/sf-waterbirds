@@ -218,6 +218,7 @@ for (j in 1:nrow(cat.table)) {
 
 cat.table
 
+write.csv(cat.table, "pond.type.rep.csv", row.names=F)
 
 ##ASSESSMENT 1: ALLIGNMENT OF SUBSET COUNTS WITH OVERALL COUNTS
 ##check which years have counts for all ponds
