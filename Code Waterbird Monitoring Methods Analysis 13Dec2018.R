@@ -25,6 +25,8 @@ pond.cat<-pond.cat.E
 
 wish.list<-c("RSF2U1", "RSF2U2", "RSF2U3", "RSF2U4", "A16", "A17", "A19", "A8", "E12", "E13", "E9", "E10", "R3", "R4", "A1", "E6", "E6C", "E4C", "E5C") ##list of ponds that managers want to include in subset based on meeting with PMT in Feb 2019
 
+low.list<-c("A6", "A20", "A21", "E1", "E2", "A5", "A7") ##sites with low or expected low access
+
 ##SUBSET SURVEY SITES
 
 ##CREATE SET OF SURVEY SITES WITH SIMILAR COMPOSITION TO ENTIRE SET
@@ -116,6 +118,7 @@ frac.sub<-c(0.3, 0.4, 0.5, 0.6, 0.7, 1) ##fraction of ponds to survey
 ##create a map of subsets
 library(rgdal)
 library(rgeos) ##required for gintersection
+library(maptools) ##required for fortify
 land<- rgdal::readOGR(dsn = "S:/Science/GIS/CA_map_layers", layer= "north_america")
 CA<-rgdal::readOGR(dsn = "S:/Science/GIS/Salt Pond", layer= "CA_boundary_NAD83")
 ponds.poly<-rgdal::readOGR(dsn = "S:/Science/GIS/Salt Pond/all_salt_pond_grids_2014", layer= "2014_11_19_pond_scale")
@@ -188,7 +191,7 @@ map <- map + theme(axis.text.x=element_blank(), axis.text.y = element_blank())
 map <- map + theme(legend.position = "bottom")
 map
 
-png(filename = str_c(file.path, "/map.png"), units="in", width=6.5, height=9,  res=400);print(map); dev.off()
+png(filename = str_c(file.path, "/map.png"), units="in", width=6.5, height=7,  res=400);print(map); dev.off()
 
 ##TABLE OF POND TYPES INCLUDED IN SUBSET
 cat.table<-data.frame(Subset=frac.sub, Managed=NA, Breached=NA, Breached.PhaseII=NA, Reconfigured=NA, Reconfigured.PhaseII = NA, Salt.pond=NA)
@@ -251,7 +254,7 @@ fig
 
 fig.loess<-fig
 
-png(filename = str_c(file.path, "/fig.loess.png"), units="in", width=6.5, height=5,  res=200);print(fig.loess); dev.off()
+png(filename = str_c(file.path, "/fig.loess.png"), units="in", width=6.5*1.5, height=5*1.5,  res=300);print(fig.loess); dev.off()
 
 ##test whether trends are different for all data versus pond subset
 slopes<-dim(0)
