@@ -290,7 +290,7 @@ png(filename = str_c(file.path, "/fig.slope.png"), units="in", width=6.5, height
 ##depends on sample size (n), probability of type 1 error (alpha), and magnitude of difference between null hypothesis and reality (effect size, ie rate of change, r); also depends on measurement error (CV, coefficient of variation of abundance estimate, can be estimated by residual variance about the regression line)
 
 ##species counts by unique survey
-dat.spp<- subset(dat.complete, footprint=="All" & Pond %in% ponds.subset.ordered[1:(round(85*frac.sub, 0))]) %>% group_by(year, season.yr, MonthYear, Season, SpeciesCode) %>% dplyr::summarise(abun=sum(TotalAbundance)) %>% data.frame()
+dat.spp<- subset(dat.complete, footprint=="All" & Pond %in% ponds.subset.ordered[1:(round(85*frac.sub[3], 0))]) %>% group_by(year, season.yr, MonthYear, Season, SpeciesCode) %>% dplyr::summarise(abun=sum(TotalAbundance)) %>% data.frame()
 
 ##average counts by season and species
 dat.season<- dat.spp %>% group_by(Season, season.yr, SpeciesCode) %>% dplyr::summarise(mean=round(mean(abun),0)) %>% data.frame()
@@ -379,19 +379,33 @@ fig
 pulse<-T
 rep<-1000
 percents<-c(-10, -15, -20, -50)
+frac.sub.power<-c(0.3, 0.5, 0.6, 1)
 years<-3:15
 season.n<-2 ##number of samples taken within the season/year
 #spp<-unique(dat$SpeciesCode)
 spp<-c("RUDU", "BUFF", "CANV", "SCAU", "WESA", "LESA", "EAGR", "PHAL", "RNPH", "BOGU", "NSHO", "WILL", "AMAV", "MAGO", "LETE", "FOTE", "CATE")
+guild<-c("DABBLER", "MEDSHORE", "DIVER", "GULL", "TERN", "EAREDGR", "SMSHORE", "PHAL")
 #spp<-c("WESA", "NSHO", "WILL")
 #out.sim<-data.frame(sp=NA, rep=NA, per=NA, season.n=NA, season=NA, years=NA, detect=NA, count=NA)
 power.dat.out<-dim(0)
-for (j in 1:length(spp)) { ##for each species
-  out.sim<-data.frame(sp=NA, rep=NA, per=NA, season.n=NA, season=NA, years=NA, detect=NA, count=NA)
+for (f in 1:length(frac.sub.power)) {
+  ##species counts by unique survey
+  dat.spp<- subset(dat.complete, footprint=="All" & Pond %in% ponds.subset.ordered[1:(round(85*frac.sub.power[f], 0))]) %>% group_by(year, season.yr, MonthYear, Season, StandardGuild) %>% dplyr::summarise(abun=sum(TotalAbundance)) %>% data.frame()
   
-  spp.temp<-spp[j] ##species to analyze
-  print(spp.temp)
-  ##estimate error from historical data
+  ##average counts by season and species
+  dat.season<- dat.spp %>% group_by(Season, season.yr, StandardGuild) %>% dplyr::summarise(mean=round(mean(abun),0)) %>% data.frame()
+  
+  ##add ln abun to dat.spp and dat.season
+  dat.spp$ln.abun<-log(dat.spp$abun+1)
+  dat.season$ln.mean<-log(dat.season$mean+1)
+  
+  for (j in 1:length(guild)) { ##for each species
+    out.sim<-data.frame(sp=NA, rep=NA, per=NA, season.n=NA, season=NA, years=NA, detect=NA, count=NA, frac=NA)
+    
+    #spp.temp<-spp[j] ##species to analyze
+    spp.temp<-guild[j]
+    print(spp.temp)
+    ##estimate error from historical data
     #dat.temp<-subset(dat.spp, SpeciesCode==spp.temp) ##total count of that species for the study area for each monthyear (ie survey period). assumes that only used data for surveys with complete counts across all ponds (see above code)
     ##find months with max counts
     #dat.temp$month<-as.numeric(format(dat.temp$MonthYear, "%m")) ##add month
@@ -402,11 +416,12 @@ for (j in 1:length(spp)) { ##for each species
     #dat.temp<-subset(dat.temp, month %in% months) ##subset data to only include months with highest counts
     
     #alternatively use seasonal data
-    dat.temp<-subset(dat.season, SpeciesCode==spp.temp)
+    #dat.temp<-subset(dat.season, SpeciesCode==spp.temp)
+    dat.temp<-subset(dat.season, StandardGuild==spp.temp)
     dat.season.mean<-dat.temp %>% group_by(Season) %>% summarize(mean=mean(mean)) %>% data.frame()
     season<-as.character(dat.season.mean$Season[which.max(dat.season.mean$mean)])
     
-    dat.temp<-subset(dat.spp, Season==season & SpeciesCode==spp.temp)
+    dat.temp<-subset(dat.spp, Season==season & StandardGuild==spp.temp)
     
     ##visualize data and error
     #fig <- ggplot(data = dat.temp, aes(x = MonthYear, y = abun))
@@ -427,104 +442,104 @@ for (j in 1:length(spp)) { ##for each species
     variance<-sd.yr^2
     
     if (is.na(variance)) {next} ##if the variance in NA, then this species has only been surveyed once in nay given year and it won't be possible to estimate error. move to the next species
-  
-  ##vary the percent annual change
+    
+    ##vary the percent annual change
     for (c in 1:length(percents)) { ##for percent annual change -10%, -20%, etc
-    per.temp<-percents[c] ##percent annual change
-    for (r in 1:rep) { ##for rep replicates
-      ##simulate 20 years of data with error from the historical data and certain % annual change
-      ##note that simulated abundance actually represents simulated count data. abundance is the assumed true abundance
-      sim.dat<-data.frame(year=rep(1:20, season.n))
-      for (i in 1:length(sim.dat$year)) {
-        if (sim.dat$year[i]==1) {
-          sim.dat$abun[i]<-round(mean(dat.temp$abun),0) ##starting abundance
-        } else {
-          #sim.dat$abun[i]<-round(subset(sim.dat, year==sim.dat$year[i]-1)$abun[1] + subset(sim.dat, year==sim.dat$year[i]-1)$abun[1]*per.temp/100,0)
-          ##change this so it is an exponential model
-          N0<-round(mean(dat.temp$abun),0)
-          r.temp<-log(1+per.temp/100)
-          t<-sim.dat$year[i]-1
-          sim.dat$abun[i]<-N0*exp(r.temp*t)
-          
-          ##overwrite years 2-t with pulse change (given percent decrease in year 2 that continues for subsequent years)
-          if(pulse==T) {
-            sim.dat$abun[i]<-N0*(1+per.temp/100)
+      per.temp<-percents[c] ##percent annual change
+      for (r in 1:rep) { ##for rep replicates
+        ##simulate 20 years of data with error from the historical data and certain % annual change
+        ##note that simulated abundance actually represents simulated count data. abundance is the assumed true abundance
+        sim.dat<-data.frame(year=rep(1:20, season.n))
+        for (i in 1:length(sim.dat$year)) {
+          if (sim.dat$year[i]==1) {
+            sim.dat$abun[i]<-round(mean(dat.temp$abun),0) ##starting abundance
+          } else {
+            #sim.dat$abun[i]<-round(subset(sim.dat, year==sim.dat$year[i]-1)$abun[1] + subset(sim.dat, year==sim.dat$year[i]-1)$abun[1]*per.temp/100,0)
+            ##change this so it is an exponential model
+            N0<-round(mean(dat.temp$abun),0)
+            r.temp<-log(1+per.temp/100)
+            t<-sim.dat$year[i]-1
+            sim.dat$abun[i]<-N0*exp(r.temp*t)
+            
+            ##overwrite years 2-t with pulse change (given percent decrease in year 2 that continues for subsequent years)
+            if(pulse==T) {
+              sim.dat$abun[i]<-N0*(1+per.temp/100)
+            }
           }
-        }
-        
-        ##draw from distribution with min=0, mean=abundance, spread equal to variance in our dataset
-        #count.distrib<-rnorm(mean=sim.dat$abun[i], sd=rmse, n = 10000)
-        #count.distrib<-count.distrib[which(count.distrib >=0)]
-        ##use poisson or negative binomial instead
-        ##mu = mean, size=dispersion parameter, where variance = mu +mu^2/size
-        mu <- sim.dat$abun[i]
-        variance <- variance
-        size <- (mu + mu^2) / variance
-        sd.lm<-lm(sd~ 0 + mean, data=error.yr) ##forces lm through the origin
-        sd.corrected<-mu*coefficients(sd.lm)
-        #count.distrib<-rnbinom(n = 10000, mu = mu, size = size)
-        #count.distrib<-rpois(n = 10000, lambda = mu) ##lambda is the mean
-        count.distrib<-round(rnorm(n = 10000, mean = mu, sd = sd.corrected),0) ##draw from normal distrib
-        
-        
-        #count.distrib<-subset(count.distrib, count.distrib>=0) ##remove negative values for annual percent decline case
-        count.distrib<-replace(count.distrib, which(count.distrib<0), 0) ##replace negative values with 0
-        
-        #hist(count.distrib)
-        sim.dat$abun.sim[i]<-sample(count.distrib, size = 1)
-      }
-      
-      #plot(log(abun+1)~year, data=sim.dat); points(log(abun.sim+1)~year, data=sim.dat, col="blue")
-      
-      for (y in years) { ##for 5 to 20 years of data
-        ##subset data to selected years
-        sim.dat.sub<-subset(sim.dat, year<=y)
-        ##count in last year
-        last.count<-sim.dat.sub$abun.sim[which.max(sim.dat.sub$year)]
-        ##create linear model of log-linearized abundances
-        lm.temp<-lm(log(abun.sim+1)~year, data=sim.dat.sub)
-        
-        ##for pulse change, run t-test of first year compared to subsequent years
-        ttest.temp<- t.test(x = subset(sim.dat.sub, year>1)$abun.sim, mu= sim.dat.sub$abun[1], alternative="less")
-        
-        ##report whether or not trend was detected
-        ifelse(coefficients(lm.temp)[2]<0 & summary(lm.temp)$coefficients[2,4] <=0.05, detect.temp<-"yes", detect.temp<-"no") ##this just requires that the trend is negative, but might want to have requirements about the magnitude (ie slope must be similar to given percent decrease, including error in estimate)
-        
-        ##overwrite yes/no determinant with ttest output if testing pulse case
-        if (pulse==T) {
-          ifelse(ttest.temp$p.value <=0.05, detect.temp<-"yes", detect.temp<-"no")
-          ##calculate the percent change across the interval
-          #y1<-exp(predict(object = lm.temp, newdata = data.frame(year=1), interval = "confidence"))-1
-          #ymax<-exp(predict(object = lm.temp, newdata = data.frame(year=y), interval = "confidence"))-1
-          #change.temp<-(ymax-y1)/y1*100
-          #ifelse(coefficients(lm.temp)[2]<0 & summary(lm.temp)$coefficients[2,4] <=0.05 & change.temp[2]<=per.temp, detect.temp<-"yes", detect.temp<-"no")
           
-          #if (detect.temp=="yes") {print(change.temp)}
+          ##draw from distribution with min=0, mean=abundance, spread equal to variance in our dataset
+          #count.distrib<-rnorm(mean=sim.dat$abun[i], sd=rmse, n = 10000)
+          #count.distrib<-count.distrib[which(count.distrib >=0)]
+          ##use poisson or negative binomial instead
+          ##mu = mean, size=dispersion parameter, where variance = mu +mu^2/size
+          mu <- sim.dat$abun[i]
+          variance <- variance
+          size <- (mu + mu^2) / variance
+          sd.lm<-lm(sd~ 0 + mean, data=error.yr) ##forces lm through the origin
+          sd.corrected<-mu*coefficients(sd.lm)
+          #count.distrib<-rnbinom(n = 10000, mu = mu, size = size)
+          #count.distrib<-rpois(n = 10000, lambda = mu) ##lambda is the mean
+          count.distrib<-round(rnorm(n = 10000, mean = mu, sd = sd.corrected),0) ##draw from normal distrib
+          
+          
+          #count.distrib<-subset(count.distrib, count.distrib>=0) ##remove negative values for annual percent decline case
+          count.distrib<-replace(count.distrib, which(count.distrib<0), 0) ##replace negative values with 0
+          
+          #hist(count.distrib)
+          sim.dat$abun.sim[i]<-sample(count.distrib, size = 1)
         }
         
-        out.sim<-rbind(out.sim, data.frame(sp=spp.temp, rep=r, per=per.temp, season.n=season.n, season=season, years=y, detect=detect.temp, count=last.count)) ##rep, per.temp, years studied, trend detected?
-      } ##end loop through years
-      
-      if (r==1) {
-        fig <- ggplot(data = sim.dat, aes(x=year))
-        fig <- fig + geom_point(aes(y=abun.sim))
-        fig <- fig + geom_line(aes(y=abun))
-        fig <- fig + ggtitle(str_c(spp.temp, " at ", per.temp, "% decline"))
-        #fig <- fig + ggtitle(str_c(spp.temp, " at ", per.temp, "% decline;  lwr CI ", round(change.temp[2], 2), "%"))
-        #fig <- fig + geom_abline(slope = coefficients(lm.temp)[2], intercept = coefficients(lm.temp)[1], color="blue")
-        fig
-        print(fig)
-      }
-      
-    } ##end loop through reps
-  } ## end loop through percent annual change
+        #plot(log(abun+1)~year, data=sim.dat); points(log(abun.sim+1)~year, data=sim.dat, col="blue")
+        
+        for (y in years) { ##for 5 to 20 years of data
+          ##subset data to selected years
+          sim.dat.sub<-subset(sim.dat, year<=y)
+          ##count in last year
+          last.count<-sim.dat.sub$abun.sim[which.max(sim.dat.sub$year)]
+          ##create linear model of log-linearized abundances
+          lm.temp<-lm(log(abun.sim+1)~year, data=sim.dat.sub)
+          
+          ##for pulse change, run t-test of first year compared to subsequent years
+          ttest.temp<- t.test(x = subset(sim.dat.sub, year>1)$abun.sim, mu= sim.dat.sub$abun[1], alternative="less")
+          
+          ##report whether or not trend was detected
+          ifelse(coefficients(lm.temp)[2]<0 & summary(lm.temp)$coefficients[2,4] <=0.05, detect.temp<-"yes", detect.temp<-"no") ##this just requires that the trend is negative, but might want to have requirements about the magnitude (ie slope must be similar to given percent decrease, including error in estimate)
+          
+          ##overwrite yes/no determinant with ttest output if testing pulse case
+          if (pulse==T) {
+            ifelse(ttest.temp$p.value <=0.05, detect.temp<-"yes", detect.temp<-"no")
+            ##calculate the percent change across the interval
+            #y1<-exp(predict(object = lm.temp, newdata = data.frame(year=1), interval = "confidence"))-1
+            #ymax<-exp(predict(object = lm.temp, newdata = data.frame(year=y), interval = "confidence"))-1
+            #change.temp<-(ymax-y1)/y1*100
+            #ifelse(coefficients(lm.temp)[2]<0 & summary(lm.temp)$coefficients[2,4] <=0.05 & change.temp[2]<=per.temp, detect.temp<-"yes", detect.temp<-"no")
+            
+            #if (detect.temp=="yes") {print(change.temp)}
+          }
+          
+          out.sim<-rbind(out.sim, data.frame(sp=spp.temp, rep=r, per=per.temp, season.n=season.n, season=season, years=y, detect=detect.temp, count=last.count, frac=frac.sub.power[f])) ##rep, per.temp, years studied, trend detected?
+        } ##end loop through years
+        
+        if (r==1) {
+          fig <- ggplot(data = sim.dat, aes(x=year))
+          fig <- fig + geom_point(aes(y=abun.sim))
+          fig <- fig + geom_line(aes(y=abun))
+          fig <- fig + ggtitle(str_c(spp.temp, " at ", per.temp, "% decline, with ", frac.sub.power[f], " of ponds"))
+          #fig <- fig + ggtitle(str_c(spp.temp, " at ", per.temp, "% decline;  lwr CI ", round(change.temp[2], 2), "%"))
+          #fig <- fig + geom_abline(slope = coefficients(lm.temp)[2], intercept = coefficients(lm.temp)[1], color="blue")
+          fig
+          print(fig)
+        }
+        
+      } ##end loop through reps
+    } ## end loop through percent annual change
     
     out.sim<-out.sim[complete.cases(out.sim),] ##get rid of first row of NAs
     
     ##calculate power to detect trend
-    power.dat<-out.sim %>% group_by(sp, per, season.n, season, years, detect) %>% count(detect) %>% data.frame ##get counts of yes' and no's for detections
+    power.dat<-out.sim %>% group_by(sp, per, season.n, season, years, detect, frac) %>% count(detect) %>% data.frame ##get counts of yes' and no's for detections
     
-    power.count<-out.sim %>% group_by(sp, per, season.n, season, years) %>% dplyr::summarise(count=round(mean(count),0)) %>% data.frame ##get mean count for that category
+    power.count<-out.sim %>% group_by(sp, per, season.n, season, years, frac) %>% dplyr::summarise(count=round(mean(count),0)) %>% data.frame ##get mean count for that category
     
     power.dat<-dplyr::left_join(x=power.dat, y=power.count, by = NULL)
     
@@ -537,7 +552,8 @@ for (j in 1:length(spp)) { ##for each species
     
     power.dat.out<-rbind(power.dat.out, power.dat)
     
-} ##end loop through species
+  } ##end loop through species
+} ##end loop through fraction of subset ponds
 
 ##plot one example of simulated data
 #plot(log(abun.sim+1)~year, data=sim.dat.sub, main=per.temp); abline(coefficients(lm.temp)[1], coefficients(lm.temp)[2]); text(x=15, y=2, labels = round(summary(lm.temp)$coefficients[2,4], 2))
@@ -593,14 +609,14 @@ fig
 
 ##make a table comparing the power analyses from the full set of sites to the subset of sites
 ##load output from power analyses of full set
-power.table.spread.full<-read.csv("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2018 Methods Analysis/Waterbird Monitoring Methods Analysis 2018/power.table.spread.pulse.12Apr2018.csv")
-power.fullset<-subset(power.table.spread.full, select=-c(X3))
-colnames(power.fullset)<-c("sp", "season", "per", "All Sites 1 survey", "All Sites 2 surveys")
-colnames(power.table.spread)<-c("sp", "season", "per", "Subset of Sites")
-library(dplyr)
-power.table.compare<-dplyr::full_join(subset(power.fullset, select = -season), subset(power.table.spread, select= -season))
-power.table.compare$`Subset of Sites`[which(is.na(power.table.compare$`Subset of Sites`))]<-">15"
-write.csv(power.table.compare, "power.table.freq.v.subset.csv", row.names=F)
+#power.table.spread.full<-read.csv("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2018 Methods Analysis/Waterbird Monitoring Methods Analysis 2018/power.table.spread.pulse.12Apr2018.csv")
+#power.fullset<-subset(power.table.spread.full, select=-c(X3))
+#colnames(power.fullset)<-c("sp", "season", "per", "All Sites 1 survey", "All Sites 2 surveys")
+#colnames(power.table.spread)<-c("sp", "season", "per", "Subset of Sites")
+#library(dplyr)
+#power.table.compare<-dplyr::full_join(subset(power.fullset, select = -season), subset(power.table.spread, select= -season))
+#power.table.compare$`Subset of Sites`[which(is.na(power.table.compare$`Subset of Sites`))]<-">15"
+#write.csv(power.table.compare, "power.table.freq.v.subset.csv", row.names=F)
 
 ##ASSESS EFFECT OF REMOVING GRIDDING ON SURVEY DURATION
 ##remove durations with error (duration is negative)
