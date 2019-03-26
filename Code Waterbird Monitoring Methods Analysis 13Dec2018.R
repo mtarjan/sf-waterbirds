@@ -381,9 +381,9 @@ fig
 #plot(sd~mean, data=dat.temp)
 
 pulse<-T
-rep<-1000
+rep<-10000
 percents<-c(-10, -15, -20, -50)
-frac.sub.power<-c(0.3, 0.5, 0.6, 1)
+frac.sub.power<-frac.sub
 years<-3:15
 season.n<-2 ##number of samples taken within the season/year
 #spp<-unique(dat$SpeciesCode)
@@ -392,6 +392,7 @@ guild<-c("DABBLER", "MEDSHORE", "DIVER", "GULL", "TERN", "EAREDGR", "SMSHORE", "
 #spp<-c("WESA", "NSHO", "WILL")
 #out.sim<-data.frame(sp=NA, rep=NA, per=NA, season.n=NA, season=NA, years=NA, detect=NA, count=NA)
 power.dat.out<-dim(0)
+power.dat.out2<-dim(0)
 for (f in 1:length(frac.sub.power)) {
   ##species counts by unique survey
   dat.spp<- subset(dat.complete, footprint=="All" & Pond %in% ponds.subset.ordered[1:(round(85*frac.sub.power[f], 0))]) %>% group_by(year, season.yr, MonthYear, Season, StandardGuild) %>% dplyr::summarise(abun=sum(TotalAbundance)) %>% data.frame()
@@ -404,7 +405,7 @@ for (f in 1:length(frac.sub.power)) {
   dat.season$ln.mean<-log(dat.season$mean+1)
   
   for (j in 1:length(guild)) { ##for each species
-    out.sim<-data.frame(sp=NA, rep=NA, per=NA, season.n=NA, season=NA, years=NA, detect=NA, count=NA, frac=NA)
+    out.sim<-data.frame(sp=NA, rep=NA, per=NA, season.n=NA, season=NA, years=NA, detect=NA, count=NA, frac=NA, trig=NA)
     
     #spp.temp<-spp[j] ##species to analyze
     spp.temp<-guild[j]
@@ -506,6 +507,10 @@ for (f in 1:length(frac.sub.power)) {
           ##for pulse change, run t-test of first year compared to subsequent years
           ttest.temp<- t.test(x = subset(sim.dat.sub, year>1)$abun.sim, mu= sim.dat.sub$abun[1], alternative="less")
           
+          ##test if a trigger was hit
+          ##trigger == number below baseline for 2 of three last years
+          ifelse(length(which(sim.dat.sub$abun.sim[(y-2):y]<sim.dat.sub$abun[1]))>1, trig<-"yes", trig<-"no")
+          
           ##report whether or not trend was detected
           ifelse(coefficients(lm.temp)[2]<0 & summary(lm.temp)$coefficients[2,4] <=0.05, detect.temp<-"yes", detect.temp<-"no") ##this just requires that the trend is negative, but might want to have requirements about the magnitude (ie slope must be similar to given percent decrease, including error in estimate)
           
@@ -521,7 +526,7 @@ for (f in 1:length(frac.sub.power)) {
             #if (detect.temp=="yes") {print(change.temp)}
           }
           
-          out.sim<-rbind(out.sim, data.frame(sp=spp.temp, rep=r, per=per.temp, season.n=season.n, season=season, years=y, detect=detect.temp, count=last.count, frac=frac.sub.power[f])) ##rep, per.temp, years studied, trend detected?
+          out.sim<-rbind(out.sim, data.frame(sp=spp.temp, rep=r, per=per.temp, season.n=season.n, season=season, years=y, detect=detect.temp, count=last.count, frac=frac.sub.power[f], trig=trig)) ##rep, per.temp, years studied, trend detected?
         } ##end loop through years
         
         if (r==1) {
@@ -555,6 +560,22 @@ for (f in 1:length(frac.sub.power)) {
     power.dat$power<-power.dat$yes/(power.dat$yes+power.dat$no)
     
     power.dat.out<-rbind(power.dat.out, power.dat)
+    
+    ##calculate power to detect trigger
+    power.dat2<-out.sim %>% group_by(sp, per, season.n, season, years, trig, frac) %>% count(trig) %>% data.frame ##get counts of yes' and no's for detections
+    
+    power.count2<-out.sim %>% group_by(sp, per, season.n, season, years, frac) %>% dplyr::summarise(count=round(mean(count),0)) %>% data.frame ##get mean count for that category
+    
+    power.dat2<-dplyr::left_join(x=power.dat2, y=power.count2, by = NULL)
+    
+    ##spread detections
+    power.dat2<-spread(power.dat2, trig, n, fill = 0)
+    if (is.null(power.dat2$no)) {power.dat2$no<-0}
+    if (is.null(power.dat2$yes)) {power.dat2$yes<-0}
+    ##add column with % positive detections
+    power.dat2$power<-power.dat2$yes/(power.dat2$yes+power.dat2$no)
+    
+    power.dat.out2<-rbind(power.dat.out2, power.dat2)
     
   } ##end loop through species
 } ##end loop through fraction of subset ponds
@@ -601,13 +622,14 @@ for (j in 1:length(unique(power.dat$sp))) {
   fig <- fig + theme(text = element_text(size=16))
   fig <- fig + labs(color=ifelse(pulse==T, "Percent \npulse change","Percent \nannual change"))
   fig <- fig + xlab("Number of years") + ylab("Power to detect trend")
-  fig <- fig + ggtitle(str_c(spp.temp, " with ", season.n.temp, " ",season.temp," survey(s)"))
+  fig <- fig + ggtitle(str_c(spp.temp, " with ", season.n.temp, " ",season.temp," surveys"))
   #fig <- fig + ggtitle(spp.temp)
   fig <- fig + scale_x_continuous(breaks = years, labels=years)
   fig <- fig + scale_y_continuous(breaks = seq(0,1,0.1), labels=seq(0,1,0.1))
+  fig <- fig + facet_wrap(~frac)
   fig
   
-  png(filename = str_c(file.path, "/fig.",spp.temp,".",season.n.temp, "surveys.png"), units="in", width=6.5, height=3.5,  res=200);print(fig); dev.off()
+  png(filename = str_c(file.path, "/fig.",spp.temp,".",season.n.temp, "surveys.png"), units="in", width=6.5, height=5,  res=200);print(fig); dev.off()
 }
 fig
 
