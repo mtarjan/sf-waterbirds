@@ -381,7 +381,7 @@ fig
 #plot(sd~mean, data=dat.temp)
 
 pulse<-T
-rep<-10000
+rep<-1000
 percents<-c(-10, -15, -20, -50)
 frac.sub.power<-frac.sub
 years<-3:15
@@ -585,7 +585,8 @@ for (f in 1:length(frac.sub.power)) {
 
 power.dat<-power.dat.out
 
-write.csv(power.dat, "power.dat.csv", row.names = F)
+write.csv(power.dat.out, "power.dat.csv", row.names = F)
+write.csv(power.dat.out2, "power.dat.trigger.csv", row.names = F)
 
 ##make table of survey years until >0.8 power
 power.table<-power.dat %>% group_by(sp, per, season.n) %>% subset(power > 0.8) %>% data.frame()
@@ -599,12 +600,12 @@ for (j in 1:nrow(unique(subset(power.table, select=c(sp, per, season.n))))) {
 out<-unique(out)
 power.table<-subset(out, select=-c(no, yes))
 
-write.csv(power.table, "power.table.csv", row.names = F)
+#write.csv(power.table, "power.table.csv", row.names = F)
 
 power.table.spread<-subset(power.table, select= c(sp, season, per, season.n, years)) %>% spread(key = season.n, value = years)
 power.table.spread<-replace(power.table.spread, list = is.na(power.table.spread), values = ">15")
 
-write.csv(power.table.spread, "power.table.spread.csv", row.names=F)
+#write.csv(power.table.spread, "power.table.spread.csv", row.names=F)
 
 ##plot results
 n.plot<-2 ##number of seasons to plot
