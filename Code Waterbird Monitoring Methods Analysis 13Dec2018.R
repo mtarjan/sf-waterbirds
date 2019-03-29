@@ -660,6 +660,7 @@ for (f in 1:length(frac.sub.power)) {
 #power.dat2<-pd
 
 power.dat<-power.dat.out
+power.dat2<-power.dat.out2
 
 write.csv(power.dat.out, "power.dat.csv", row.names = F)
 write.csv(power.dat.out2, "power.dat.trigger.csv", row.names = F)
@@ -684,7 +685,7 @@ power.table.spread<-replace(power.table.spread, list = is.na(power.table.spread)
 write.csv(power.table.spread, "power.table.spread.csv", row.names=F)
 
 ##plot results
-n.plot<-2 ##number of seasons to plot
+n.plot<-1 ##number of seasons to plot
 for (j in 1:length(unique(power.dat$sp))) {
   data.plot<-subset(power.dat, sp==unique(power.dat$sp)[j] & season.n==n.plot)
   
