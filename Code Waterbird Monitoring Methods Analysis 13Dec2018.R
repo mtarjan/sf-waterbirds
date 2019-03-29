@@ -228,7 +228,14 @@ out<-dim(0)
 for (f in 1:length(frac.sub)) {
   for (j in 1:length(speciesOI)) { ##for each species of interest
     species.temp<-speciesOI[j]
-    counts.temp<-subset(dat.pond, StandardGuild==species.temp & Pond %in% ponds.subset.ordered[1:round(length(ponds.subset.ordered)*frac.sub[f], 0)]) %>% group_by(MonthYear, year, Season) %>% dplyr::summarise(count=sum(abun)) %>% data.frame() ##take the counts for that species from the subset sites
+    ##find peak season and restrict counts to peak season
+    dat.spp<- subset(dat.complete, footprint=="SBSPRP") %>% group_by(year, season.yr, MonthYear, Season, StandardGuild) %>% dplyr::summarise(abun=sum(TotalAbundance)) %>% data.frame()
+    dat.season<- dat.spp %>% group_by(Season, season.yr, StandardGuild) %>% dplyr::summarise(mean=round(mean(abun),0)) %>% data.frame()
+    dat.temp<-subset(dat.season, StandardGuild==species.temp)
+    dat.season.mean<-dat.temp %>% group_by(Season) %>% summarize(mean=mean(mean)) %>% data.frame()
+    season<-as.character(dat.season.mean$Season[which.max(dat.season.mean$mean)])
+    
+    counts.temp<-subset(dat.pond, StandardGuild==species.temp & Pond %in% ponds.subset.ordered[1:round(length(ponds.subset.ordered)*frac.sub[f], 0)] & Season==season) %>% group_by(MonthYear, year, Season) %>% dplyr::summarise(count=sum(abun)) %>% data.frame() ##take the counts for that species from the subset sites
     counts.temp$Guild<-species.temp
     counts.temp$pond.fraction<-frac.sub[f]
     out<-rbind(out, counts.temp)
@@ -240,10 +247,10 @@ out[is.na(out)]<-0
 ##compare trends of counts in all ponds to trends in counts from subset of ponds
 ##note that some ponds may not have been counted in all survey periods
 
-fig <- ggplot(data = subset(out, year >= 2005 & Season %in% c("Winter")), aes(x = MonthYear, y = count, color=factor(pond.fraction)))
+fig <- ggplot(data = subset(out, year >= 2005), aes(x = MonthYear, y = count, color=factor(pond.fraction)))
 fig <- fig + geom_point()
 fig <- fig + geom_smooth(method = "loess", se = F)
-fig <- fig + facet_wrap(facets = ~Guild, scales="free")
+fig <- fig + facet_wrap(facets = Guild~Season, scales="free")
 fig <- fig + xlab("Date") + ylab("Bird count")
 fig <- fig + theme_classic()
 fig <- fig + theme(strip.background = element_rect(colour = "white", fill = "white"))
@@ -262,9 +269,13 @@ slopes<-dim(0)
 for (f in 1:length(frac.sub)) {
   for (j in 1:length(unique(out$Guild))) {
     guild.temp<-unique(out$Guild)[j]
-    dat.temp<-subset(out, Guild==guild.temp & year >=2005 & pond.fraction==frac.sub[f] & Season =="Winter")
+    dat.temp<-subset(out, Guild==guild.temp & year >=2005 & pond.fraction==frac.sub[f])
     lm.all<-lm(formula = log(count+1) ~ MonthYear, data = dat.temp)
-    slopes<-rbind(slopes, data.frame(Guild=guild.temp, pond.fraction=frac.sub[f], Slope= summary(lm.all)$coefficients[2,1], se = summary(lm.all)$coefficients[2,2]))
+    ##or fit loess
+    dat.temp$year<-as.numeric(dat.temp$year)
+    loess.temp<-loess(formula = count ~ year, data = dat.temp) ##note that coefficients won't work here
+    perc<-round((predict(object = loess.temp, newdata = data.frame(year = 2017))- predict(object = loess.temp, newdata = data.frame(year = 2007)))/predict(object = loess.temp, newdata = data.frame(year = 2017))*100,0) ##percent change from first to last year; check this calculation
+    slopes<-rbind(slopes, data.frame(Guild=guild.temp, pond.fraction=frac.sub[f], Slope= summary(lm.all)$coefficients[2,1], se = summary(lm.all)$coefficients[2,2], perc=perc))
   }
 }
 
@@ -286,6 +297,51 @@ png(filename = str_c(file.path, "/fig.slope.png"), units="in", width=6.5, height
 #<-data.frame(MonthYear= rep(out.spread$MonthYear[945:946], 2), pondgroup=c("count", "count", "count.sub", "count.sub"))
 #dat.test$pred<-predict(object = lm.temp, newdata = dat.test)
 #dat.test$se<-predict(object = lm.temp, newdata = dat.test, se.fit = T)$se.fit
+
+##try GAM models instead
+library(mgcv)
+#model0<-gam(formula = count ~ s(year), data = dat.temp, family=poisson)
+data.gam<-dim(0)
+trends<-dim(0)
+for (j in 1:length(unique(out$Guild))) { ##for each species
+  for (f in 1:length(unique(out$pond.fraction))) { ##and each subset
+    ##subset the data
+    dat.temp<-subset(out, Guild==unique(out$Guild)[j] & pond.fraction==unique(out$pond.fraction)[f])
+    ##create a gam model
+    model0<-gam(formula = count ~ s(as.numeric(year)), data = dat.temp, family=poisson)
+    ##predict the output across years
+    pred.temp<-predict.gam(object = model0, newdata = dat.temp, type = "response", se.fit = T)
+    dat.temp$pred<-as.numeric(pred.temp$fit); dat.temp$se<-as.numeric(pred.temp$se.fit)
+    data.gam<-rbind(data.gam, dat.temp)
+    ##get the ten-year trend estimate
+    perc<-round((mean(subset(dat.temp, year==2017)$pred)-mean(subset(dat.temp, year==2007)$pred))/mean(subset(dat.temp, year==2007)$pred)*100,0) ##percent change from first to last year
+    trends<-rbind(trends, data.frame(frac=dat.temp$pond.fraction[1], Guild=dat.temp$Guild[1], perc=perc))
+  }
+}
+head(data.gam)
+trends<-spread(data= trends, key = frac, value = perc)
+write.csv(trends, str_c(file.path, "/tenyear.gam.trends.csv"), row.names=F)
+
+##take loess trends from above
+slopes$perc<-str_c(as.character(slopes$perc), "%")
+l.trends<-spread(data = subset(slopes, select = c(Guild, pond.fraction, perc)), key = pond.fraction, value=perc)
+write.csv(l.trends, str_c(file.path, "/tenyear.loess.trends.csv"), row.names=F)
+
+##plot gam trends
+fig <- ggplot(data = data.gam, aes(x = MonthYear, y = count, color=factor(pond.fraction)))
+fig <- fig + geom_point()
+fig <- fig + geom_path(aes(y=pred))
+fig <- fig + facet_wrap(facets = Guild~Season, scales="free")
+fig <- fig + xlab("Date") + ylab("Bird count")
+fig <- fig + theme_classic()
+fig <- fig + theme(strip.background = element_rect(colour = "white", fill = "white"))
+fig <- fig + scale_y_continuous(breaks = function(x) round(seq(from = x[1],to = x[2],by = (x[2]-x[1])/10),0), expand = c(0, 1))
+fig <- fig + scale_x_datetime(date_breaks = "2 years", date_labels = "%Y")
+fig <- fig + theme(axis.text.x = element_text(angle = 45, hjust=1, color="black"), axis.text.y = element_text(color="black"))
+fig <- fig + labs(color = "Proportion \nof sites")
+fig
+
+fig.gam<-fig
 
 ##ASSESSMENT 2: TEST POWER TO DETECT TRENDS WITH SUBSET OF PONDS AND/OR REDUCED SURVEY FREQUENCY
 
@@ -422,8 +478,17 @@ for (f in 1:length(frac.sub.power)) {
     
     #alternatively use seasonal data
     #dat.temp<-subset(dat.season, SpeciesCode==spp.temp)
-    dat.temp<-subset(dat.season, StandardGuild==spp.temp)
-    dat.season.mean<-dat.temp %>% group_by(Season) %>% summarize(mean=mean(mean)) %>% data.frame()
+    #dat.temp<-subset(dat.season, StandardGuild==spp.temp)
+    #dat.season.mean<-dat.temp %>% group_by(Season) %>% summarize(mean=mean(mean)) %>% data.frame()
+    #season<-as.character(dat.season.mean$Season[which.max(dat.season.mean$mean)])
+    #season<-"Winter" ##temporary override
+    
+    ##new approach using all data to find peak season
+    ##find peak season and restrict counts to peak season
+    dat.spp1<- subset(dat.complete, footprint=="SBSPRP") %>% group_by(year, season.yr, MonthYear, Season, StandardGuild) %>% dplyr::summarise(abun=sum(TotalAbundance)) %>% data.frame()
+    dat.season1<- dat.spp1 %>% group_by(Season, season.yr, StandardGuild) %>% dplyr::summarise(mean=round(mean(abun),0)) %>% data.frame()
+    dat.temp1<-subset(dat.season1, StandardGuild==spp.temp)
+    dat.season.mean<-dat.temp1 %>% group_by(Season) %>% summarize(mean=mean(mean)) %>% data.frame()
     season<-as.character(dat.season.mean$Season[which.max(dat.season.mean$mean)])
     
     dat.temp<-subset(dat.spp, Season==season & StandardGuild==spp.temp)
@@ -504,6 +569,8 @@ for (f in 1:length(frac.sub.power)) {
           ##create linear model of log-linearized abundances
           lm.temp<-lm(log(abun.sim+1)~year, data=sim.dat.sub)
           
+          if (subset(sim.dat.sub, year>1)$abun.sim[1] == subset(sim.dat.sub, year>1)$abun.sim[2] & length(subset(sim.dat.sub, year>1)$abun.sim)==2 & pulse==T) {sim.dat.sub$abun.sim[2]<-sim.dat.sub$abun.sim[2]+1} ##hack to avoid t-test error. if second and third years of data are the only years of data and the estiamtes are equal, add one to the second year
+          
           ##for pulse change, run t-test of first year compared to subsequent years
           ttest.temp<- t.test(x = subset(sim.dat.sub, year>1)$abun.sim, mu= sim.dat.sub$abun[1], alternative="less")
           
@@ -583,17 +650,26 @@ for (f in 1:length(frac.sub.power)) {
 ##plot one example of simulated data
 #plot(log(abun.sim+1)~year, data=sim.dat.sub, main=per.temp); abline(coefficients(lm.temp)[1], coefficients(lm.temp)[2]); text(x=15, y=2, labels = round(summary(lm.temp)$coefficients[2,4], 2))
 
+##combine current and past runs
+#pd<-read.csv("power.dat.trigger.27Mar2019.csv")
+#pd<-subset(pd, !(sp=="MEDSHORE" & season=="Fall"))
+#pd<-subset(pd, !(sp=="SMSHORE" & season=="Spring"))
+#power.dat2<-subset(power.dat2, !(sp=="MEDSHORE" & frac ==0.3))
+#power.dat2<-subset(power.dat2, !(sp=="SMSHORE" & frac ==1))
+#pd<-rbind(pd, power.dat2)
+#power.dat2<-pd
+
 power.dat<-power.dat.out
 
 write.csv(power.dat.out, "power.dat.csv", row.names = F)
 write.csv(power.dat.out2, "power.dat.trigger.csv", row.names = F)
 
 ##make table of survey years until >0.8 power
-power.table<-power.dat %>% group_by(sp, per, season.n) %>% subset(power > 0.8) %>% data.frame()
+power.table<-power.dat %>% group_by(sp, per, frac) %>% subset(power > 0.8) %>% data.frame()
 out<-power.table[1,]
-for (j in 1:nrow(unique(subset(power.table, select=c(sp, per, season.n))))) {
-  group.temp<-unique(subset(power.table, select=c(sp, per, season.n)))[j,]
-  group.temp<-subset(power.table, sp==group.temp$sp & per==group.temp$per & season.n==group.temp$season.n)
+for (j in 1:nrow(unique(subset(power.table, select=c(sp, per, frac))))) {
+  group.temp<-unique(subset(power.table, select=c(sp, per, frac)))[j,]
+  group.temp<-subset(power.table, sp==group.temp$sp & per==group.temp$per & frac==group.temp$frac)
   out.temp<-group.temp[which.min(group.temp$years),]
   out<-rbind(out, out.temp)
 }
@@ -602,10 +678,10 @@ power.table<-subset(out, select=-c(no, yes))
 
 #write.csv(power.table, "power.table.csv", row.names = F)
 
-power.table.spread<-subset(power.table, select= c(sp, season, per, season.n, years)) %>% spread(key = season.n, value = years)
+power.table.spread<-subset(power.table, select= c(sp, season, per, frac, years)) %>% spread(key = frac, value = years)
 power.table.spread<-replace(power.table.spread, list = is.na(power.table.spread), values = ">15")
 
-#write.csv(power.table.spread, "power.table.spread.csv", row.names=F)
+write.csv(power.table.spread, "power.table.spread.csv", row.names=F)
 
 ##plot results
 n.plot<-2 ##number of seasons to plot
@@ -628,11 +704,17 @@ for (j in 1:length(unique(power.dat$sp))) {
   fig <- fig + scale_x_continuous(breaks = years, labels=years)
   fig <- fig + scale_y_continuous(breaks = seq(0,1,0.1), labels=seq(0,1,0.1))
   fig <- fig + facet_wrap(~frac)
+  fig <- fig + theme(strip.background = element_rect(colour = "white", fill = "white"))
   fig
   
-  png(filename = str_c(file.path, "/fig.",spp.temp,".",season.n.temp, "surveys.png"), units="in", width=6.5, height=5,  res=200);print(fig); dev.off()
+  png(filename = str_c(file.path, "/fig.",spp.temp,".",season.n.temp, "surveys.png"), units="in", width=6.5*1.75, height=5,  res=200);print(fig); dev.off()
 }
 fig
+
+##calc probability of detecting a trigger for each sp, percent, and frac. should be equal to the value at year ==4, but could take average of year >= 4
+dat.trig<-subset(power.dat2, select=c(sp, per, frac, power), subset= years >3) %>% group_by(sp, per, frac) %>% summarise(mean.power=round(mean(power), 2)) %>% data.frame() %>% spread(key = frac, value = mean.power)
+
+write.csv(dat.trig, str_c(file.path, "/trig.prob.csv"), row.names=F)
 
 ##make a table comparing the power analyses from the full set of sites to the subset of sites
 ##load output from power analyses of full set
@@ -649,8 +731,8 @@ fig
 ##remove durations with error (duration is negative)
 dat.sfbbo$grids<-T
 dat.sfbbo$grids[which(dat.sfbbo$year==2019)]<-F
-dat.sub<-subset(dat.sfbbo, duration.mins>1)
-dat.sub<-unique(subset(dat.sub, month %in% c("01", "02") & Pond %in% unique(dat.sub$Pond[which(dat.sub$year==2019 & dat.sub$month=="01")]), select= c(Date, Pond, year, month, duration.mins, grids))) ##get unique records of pond, date, and survey duration
+dat.sub<-subset(dat.sfbbo, duration.mins>1 & duration.mins < 600)
+dat.sub<-unique(subset(dat.sub, month %in% c("01", "02", "03") & Pond %in% unique(dat.sub$Pond[which(dat.sub$year==2019 & dat.sub$month %in% c("01", "02", "03"))]), select= c(Date, Pond, year, month, duration.mins, grids))) ##get unique records of pond, date, and survey duration
 head(dat.sub)
 
 ##remove unused ponds
@@ -676,11 +758,13 @@ fig <- fig + ylab("Survey duration (mins)")
 fig <- fig + theme_classic()
 fig <- fig + scale_y_continuous(breaks = seq(0,max(dat.sub$duration.mins), 25))
 fig <- fig + theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust=1))
+fig <- fig + theme(legend.position = "bottom")
 fig
 
 fig.grid.effect<-fig
 
-png(filename = str_c(file.path, "/fig.grid.effect.png"), units="in", width=8, height=5,  res=200);print(fig); dev.off()
+png(filename = str_c(file.path, "/fig.grid.effect.png"), units="in", width=10, height=6,  res=300);print(fig); dev.off()
 
 ##test it
 duration.test<-t.test(duration.mins~grids, data= dat.sub)
+duration.test

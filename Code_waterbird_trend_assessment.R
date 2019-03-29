@@ -17,7 +17,7 @@ if (exists(x="dat.complete")==F) {
   source('Code_load_waterbird_data_13Dec2018.R')
 }
 head(dat.complete)
-dat<-data.complete
+dat<-dat.complete
 
 ##sum by species/guild, survey, and complex
 dat.guild<-dat %>% group_by(MonthYear, Season, year, season.yr, footprint, StandardGuild) %>% dplyr::summarise(abun=sum(TotalAbundance, na.rm=T)) %>% data.frame()
@@ -35,13 +35,13 @@ for (j in 1:nrow(targets)) {
   dat.temp<-subset(dat.spp.guild, Species.Guild == as.character(targets$Species.Guild)[j] & Season == targets$Season[j])
 
   ##calc percent change and baseline
-  targets$Baseline[j] <- round(mean(subset(dat.temp, footprint =="All" & str_sub(season.yr, -4, -1) %in% c("2005", "2006", "2007"))$abun),0)
+  targets$Baseline[j] <- round(mean(subset(dat.temp, footprint =="SBSPRP" & str_sub(season.yr, -4, -1) %in% c("2003", "2004", "2005"))$abun),0)
   #final.temp<-predict(object = lm(abun~MonthYear, data= subset(dat.temp, footprint=="All")), newdata = data.frame(MonthYear = max(dat.temp$MonthYear)))
-  final.temp<-round(mean(subset(dat.temp, footprint =="All" & str_sub(season.yr, -4, -1) == as.character(max(as.numeric(year))))$abun),0)
+  final.temp<-round(mean(subset(dat.temp, footprint =="SBSPRP" & str_sub(season.yr, -4, -1) == as.character(max(as.numeric(year))))$abun),0)
   targets$Change[j]<-round((final.temp-targets$Baseline[j])/targets$Baseline[j]*100,0)
   
   ##determine whether counts in the last three years present a trigger
-  trig.counts<-subset(dat.temp, footprint =="All" & str_sub(season.yr, -4, -1) %in% as.character(max(as.numeric(dat.temp$year)):(max(as.numeric(dat.temp$year))-2))) %>% group_by(season.yr) %>% dplyr::summarise(av=mean(abun)) %>% data.frame()
+  trig.counts<-subset(dat.temp, footprint =="SBSPRP" & str_sub(season.yr, -4, -1) %in% as.character(max(as.numeric(dat.temp$year)):(max(as.numeric(dat.temp$year))-2))) %>% group_by(season.yr) %>% dplyr::summarise(av=mean(abun)) %>% data.frame()
   if (nrow(subset(trig.counts, av < targets$Baseline[j]))>2) {targets$Trigger[j]<-T} else{targets$Trigger[j]<-F}
   
   ##get data for plotting
@@ -90,6 +90,9 @@ for (j in 1:length(guilds.plot)) {
   
   png(filename = str_c(file.path, "/fig.loess.", names(guilds.plot)[j],".png"), units="in", width=fig.width[j], height=fig.height[j],  res=200);print(fig); dev.off()
 }
+
+targets$Change<-str_c(as.character(targets$Change), "%")
+write.csv(subset(targets, select=-c(SpeciesCode, StandardGuild)), str_c( file.path, "/waterbird.trends.csv"), row.names=F)
 
 ##model of counts
 #M0<-lm(formula = log(abun+1) ~ MonthYear + Season + Pond, data = subset(dat.pond, SpeciesCode=="RUDU"))
@@ -150,3 +153,36 @@ fig <- fig + scale_y_continuous(expand=c(0,1), breaks = function(x) round(seq(fr
 fig <- fig + theme(text = element_text(size=14))
 #fig <- fig + ggtitle(sbsprp.sites$ColonyName[j])
 fig
+
+##make table summary of available info
+survey.effort<-subset(dat.complex, footprint=="SBSPRP & Salt Ponds") %>% group_by(ColonyName, SpeciesCode) %>% count() %>% data.frame() %>% spread(key = SpeciesCode, value = n, fill = 0) %>% subset(select= -c(UNID, ZERO))
+
+##number of yeras of data for each colony
+survey.effort<-unique(subset(dat.complex, footprint=="SBSPRP & Salt Ponds", select = c(ColonyName, SurveyYear))) %>% group_by(ColonyName) %>% count() %>% data.frame()
+
+##plot each colony
+##colonies with trends
+plot.sites<-c("Alviso A7", "Alviso A8", "Alviso A16", "Dumbarton N1", "Dumbarton N3", "Eden Landing E8A", "Eden Landing E4/7", "Moffett A2W", "Moffett AB1", "Moffett AB2", "Mountain View A1")
+
+j<-0
+j<-j+1
+fig <- ggplot(data=subset(dat.complex, ColonyName %in% plot.sites & SpeciesCode %in% c("AMAV", "BNST", "FOTE", "CATE") & !is.na(PeakNumberofNests)), aes(x=SurveyYear, y=PeakNumberofNests*2, color=SpeciesCode))
+fig <- fig + geom_point(size=2)
+fig <- fig + geom_smooth(size=1.25, method = "loess", se = F)
+fig <- fig + facet_wrap(~ColonyName, scales ="free", ncol = 3)
+fig <- fig + theme_classic() 
+fig <- fig + theme(strip.background = element_rect(colour = "white", fill = "white"))
+fig <- fig + xlab("Year") + ylab("Number of Breeding Adults") 
+fig <- fig + theme(axis.line.x=element_line(), axis.line.y=element_line(), axis.title.y = element_text(margin = margin(r=1, unit="line")))
+fig <- fig + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1, color="black"), axis.text.y = element_text(color="black"))
+#fig <- fig + scale_x_continuous(expand=c(0,1), breaks = seq(min(dat.plot$SurveyYear), max(dat.plot$SurveyYear), 4), limits= c(NA, 2018))
+fig <- fig + scale_y_continuous(expand=c(0,1), breaks = function(x) round(seq(from = 0,to = x[2]*1.2,by = (x[2]-0)/10),0), limits = c(0, NA))
+fig <- fig + scale_x_continuous(expand=c(0,1), breaks = function(x) round(seq(from = x[1],to = x[2],by = (x[2]-x[1])/10),0), limits = c(NA, 2018))
+fig <- fig + theme(text = element_text(size=14))
+#fig <- fig + ggtitle(sbsprp.sites$ColonyName[j])
+#fig <- fig + ggtitle(unique(subset(dat.complex, footprint=="SBSPRP & Salt Ponds")$ColonyName)[j])
+fig <- fig + scale_color_brewer(palette="Set1")
+fig <- fig + theme(legend.position = "bottom")
+fig
+
+png(filename = str_c(file.path, "/fig.cwb.png"), units="in", width=6.5*1.5, height=6.5*1.5,  res=200);print(fig); dev.off()
