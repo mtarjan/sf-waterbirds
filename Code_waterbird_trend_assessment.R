@@ -32,17 +32,28 @@ targets<-read.csv("targets.csv")
 
 count.trends<-dim(0)
 for (j in 1:nrow(targets)) {
-  dat.temp<-subset(dat.spp.guild, Species.Guild == as.character(targets$Species.Guild)[j] & Season == targets$Season[j])
+  dat.temp<-subset(dat.spp.guild, Species.Guild == as.character(targets$Species.Guild)[j] & Season == targets$Season[j]) ##get the data for the correct species and season
 
   ##calc percent change and baseline
-  targets$Baseline[j] <- round(mean(subset(dat.temp, footprint =="SBSPRP" & str_sub(season.yr, -4, -1) %in% c("2003", "2004", "2005"))$abun),0)
+  targets$Baseline[j] <- round(mean(subset(dat.temp, footprint =="All" & str_sub(season.yr, -4, -1) %in% c("2005", "2006", "2007"))$abun),0)
+  ##replace baseline if one already exists in table
+  if (is.na(targets$Target.SBSPRP[j])==F) {targets$Baseline[j]<-targets$Target.SBSPRP[j]}
   #final.temp<-predict(object = lm(abun~MonthYear, data= subset(dat.temp, footprint=="All")), newdata = data.frame(MonthYear = max(dat.temp$MonthYear)))
-  final.temp<-round(mean(subset(dat.temp, footprint =="SBSPRP" & str_sub(season.yr, -4, -1) == as.character(max(as.numeric(year))))$abun),0)
+  final.years.temp<-(max(as.numeric(dat.temp$year))-2):max(as.numeric(dat.temp$year))
+  final.temp<-round(mean(subset(dat.temp, footprint =="All" & str_sub(season.yr, -4, -1) %in% as.character(final.years.temp))$abun),0)
   targets$Change[j]<-round((final.temp-targets$Baseline[j])/targets$Baseline[j]*100,0)
   
   ##determine whether counts in the last three years present a trigger
-  trig.counts<-subset(dat.temp, footprint =="SBSPRP" & str_sub(season.yr, -4, -1) %in% as.character(max(as.numeric(dat.temp$year)):(max(as.numeric(dat.temp$year))-2))) %>% group_by(season.yr) %>% dplyr::summarise(av=mean(abun)) %>% data.frame()
+  trig.counts<-subset(dat.temp, footprint =="All" & str_sub(season.yr, -4, -1) %in% as.character(max(as.numeric(dat.temp$year)):(max(as.numeric(dat.temp$year))-2))) %>% group_by(season.yr) %>% dplyr::summarise(av=mean(abun)) %>% data.frame()
   if (nrow(subset(trig.counts, av < targets$Baseline[j]))>2) {targets$Trigger[j]<-T} else{targets$Trigger[j]<-F}
+  
+  ##alternative trigger for eagr, phal, bogu
+  if (as.character(targets$Species.Guild)[j] %in% c("BOGU", "PHAL", "EAGR")) {
+    ##reset trigger
+    targets$Trigger[j]<-F
+    change.temp<-(trig.counts$av-targets$Baseline[j])/targets$Baseline[j]
+    if (length(which(change.temp<=-0.5)) >= 1 | length(which(change.temp<=-0.25)) >= 3) {targets$Trigger[j]<-T}
+  }
   
   ##get data for plotting
   count.trends<-rbind(count.trends, dat.temp)
