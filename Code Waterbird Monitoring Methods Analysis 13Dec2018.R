@@ -343,6 +343,26 @@ fig
 
 fig.gam<-fig
 
+##instead, calc percent change between baseline and recent (2015-2017) counts and see if the value falls within the significance threshold of that species
+targets2<-read.csv("targets.csv")
+
+align<-dim(0)
+for (f in 1:length(frac.sub)) { ##for each subset
+  for (j in 1:length(unique(out$Guild))) { ##for each guild
+    guild.temp<-unique(out$Guild)[j]
+    dat.temp<-subset(out, Guild==guild.temp & pond.fraction==frac.sub[f])
+    baseline.temp<-mean(subset(dat.temp, year %in% c("2005", "2006", "2007"))$count)
+    if (is.na(subset(targets2, StandardGuild==guild.temp)$Target.SBSPRP[1])==F) {baseline.temp<-subset(targets2, StandardGuild==guild.temp)$Target.SBSPRP[1]}
+    recent.temp<-mean(subset(dat.temp, year %in% c("2015", "2016", "2017"))$count)
+    perc<-round((recent.temp-baseline.temp)/baseline.temp*100,0) ##percent change from first to last year; check this calculation
+    align<-rbind(align, data.frame(Guild=guild.temp, pond.fraction=frac.sub[f], perc=perc))
+  }
+}
+
+align<-spread(data= align, key = pond.fraction, value = perc)
+
+write.csv(align, str_c(file.path, "/threshold.trends.csv"), row.names=F)
+
 ##ASSESSMENT 2: TEST POWER TO DETECT TRENDS WITH SUBSET OF PONDS AND/OR REDUCED SURVEY FREQUENCY
 
 ##Gerrodette. 1987. A power analysis for detecting trends. Ecology.
