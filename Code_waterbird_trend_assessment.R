@@ -105,6 +105,20 @@ for (j in 1:length(guilds.plot)) {
 targets$Change<-str_c(as.character(targets$Change), "%")
 write.csv(subset(targets, select=-c(SpeciesCode, StandardGuild)), str_c( file.path, "/waterbird.trends.csv"), row.names=F)
 
+##PHalarope trends
+dat.temp<-subset(dat.spp.guild, Species.Guild == "PHAL" & footprint =="All") ##get the data for the correct species and season
+
+fig <- ggplot(data = dat.temp, aes(x=Season, y=abun))
+#fig <- fig + geom_line() + geom_point()
+#fig <- fig + facet_wrap(facets=.~year, scales="free")
+fig <- fig + geom_boxplot()
+fig
+
+##check which season had the most phalarope
+dat.temp%>% group_by(Season) %>% summarise(avg = mean(abun)) %>% arrange(avg)
+
+##look at phalarope counts by date
+
 ##model of counts
 #M0<-lm(formula = log(abun+1) ~ MonthYear + Season + Pond, data = subset(dat.pond, SpeciesCode=="RUDU"))
 #summary(M0)
