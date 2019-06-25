@@ -10,9 +10,9 @@ library(ggplot2)
 library(auk)
 auk::auk_set_ebd_path("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2019 Waterbird Trend Assessment/sf-waterbirds/phalarope_ebird_data")
 
-ebd<-auk_ebd(file = "ebd_US-CA-001_renpha_201501_201906_relMay-2019.txt")
+#ebd<-auk_ebd(file = "ebd_US-CA-001_renpha_201501_201906_relMay-2019.txt")
 ##define filters
-ebd_filters <- ebd %>% 
+#ebd_filters <- ebd %>% 
   #auk_species("Wood Thrush") %>% 
   ## southeastern coastal plain bcr
   #auk_bcr(bcr = 27) %>% 
@@ -20,8 +20,8 @@ ebd_filters <- ebd %>%
   #auk_date(date = c("*-06-01", "*-06-30")) %>% 
   ## restrict to the standard traveling and stationary count protocols
   ##auk_protocol(protocol = c("Stationary", "Traveling")) %>% 
-  auk_complete()
-ebd_filters
+#  auk_complete()
+#ebd_filters
 
 ##skip pervious code and just read in pre-subsetted file
 data<-read_ebd("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2019 Waterbird Trend Assessment/sf-waterbirds/phalarope_ebird_data/ebd_US-CA-001_renpha_201501_201906_relMay-2019.txt")
@@ -30,10 +30,12 @@ data2<-read_ebd("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/C
 data<-rbind(data.frame(data), data.frame(data2))
 
 ##plot number of birds observed over time
-fig <- ggplot(data, aes(x= format(observation_date, "%m-%d"), y = as.numeric(observation_count), color = county))
+fig <- ggplot(data, aes(x= as.Date(format(observation_date, "%m-%d"), "%m-%d"), y = as.numeric(observation_count), color = county))
 fig <- fig + geom_point() + geom_line()
 fig <- fig + facet_grid(format(observation_date, "%Y")~., scales="free")
 fig <- fig + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+fig <- fig + scale_x_date(date_breaks = "1 week", date_labels = "%b %d")
+fig <- fig + xlab("Date") + ylab("Number of phalarope")
 fig
 
 ##find peak 
