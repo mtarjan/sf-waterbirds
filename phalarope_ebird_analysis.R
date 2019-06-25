@@ -8,7 +8,7 @@ library(ggplot2)
 
 #install.packages("auk")
 library(auk)
-auk::auk_set_ebd_path("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2019 Waterbird Trend Assessment/sf-waterbirds/phalarope_ebird_data/", overwrite = T)
+auk::auk_set_ebd_path("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2019 Waterbird Trend Assessment/sf-waterbirds/phalarope_ebird_data")
 
 ebd<-auk_ebd(file = "ebd_US-CA-001_renpha_201501_201906_relMay-2019.txt")
 ##define filters
