@@ -78,4 +78,77 @@ fig <- fig + xlab("Date") + ylab("Number of phalarope")
 fig
 
 ##MAP
-plot(data$latitude, data$longitude)
+plot(y = data$latitude, x = data$longitude)
+
+library(rgdal)
+library(rgeos) ##required for gintersection
+library(maptools) ##required for fortify
+land<- rgdal::readOGR(dsn = "S:/Science/GIS/CA_map_layers", layer= "north_america")
+#CA<-rgdal::readOGR(dsn = "S:/Science/GIS/Salt Pond", layer= "CA_boundary_NAD83")
+ponds.poly<-rgdal::readOGR(dsn = "S:/Science/GIS/Salt Pond/all_salt_pond_grids_2014", layer= "2014_11_19_pond_scale")
+
+##check projections
+proj4string(ponds.poly); proj4string(land)
+land.utm <- spTransform(land, CRS("+init=epsg:3157")) # reproject
+proj4string(land.utm)
+
+##example
+#https://cran.r-project.org/doc/contrib/intro-spatial-rl.pdf
+
+##clip land by pond bounding box
+##functions from https://gis.stackexchange.com/questions/46954/clip-spatial-object-to-bounding-box-in-r
+as.SpatialPolygons.bbox <- function( bbox, proj4stringFrom=CRS("+proj=longlat +datum=WGS84"), proj4stringTo=NULL ) {
+  # Create unprojected bbox as spatial object
+  bboxMat <- rbind( c(bbox['x','min'],bbox['y','min']), c(bbox['x','min'],bbox['y','max']), c(bbox['x','max'],bbox['y','max']), c(bbox['x','max'],bbox['y','min']), c(bbox['x','min'],bbox['y','min']) ) # clockwise, 5 points to close it
+  bboxSP <- SpatialPolygons( list(Polygons(list(Polygon(bboxMat)),"bbox")), proj4string=proj4stringFrom  )
+  if(!is.null(proj4stringTo)) {
+    bboxSP <- spTransform( bboxSP, proj4stringTo )
+  }
+  bboxSP
+}
+
+box.expand<-cbind(summary(ponds.poly)$bbox[,1]*0.9995, summary(ponds.poly)$bbox[,2]*1.0005); colnames(box.expand)<-c("min", "max")
+
+box<-as.SpatialPolygons.bbox(bbox = box.expand, proj4stringFrom = CRS(proj4string(ponds.poly)), proj4stringTo = CRS(proj4string(land.utm)))
+if (exists("land.clip")==F) {
+  land.clip<-gIntersection(spgeom1 = land.utm, spgeom2=box)
+}
+
+library(dplyr)
+
+ponds.poly.df<-ponds.poly
+ponds.poly.df@data$id <- rownames(ponds.poly.df@data)
+ponds.f <- fortify(ponds.poly.df, region = "id")
+ponds.df <- plyr::join(ponds.f, ponds.poly.df@data, by = "id")
+ponds.df$Pond<-gsub(pattern = "N4Aa", replacement = "N4AA", x = ponds.df$Pond)
+ponds.df$Pond<-gsub(pattern = "N4Ab", replacement = "N4AB", x = ponds.df$Pond)
+ponds.df$Pond<-gsub(pattern = "R5S", replacement = "RS5", x = ponds.df$Pond)
+
+##prep sighting locations
+locs.ll<-subset(data, select=c("longitude", "latitude"))
+locs.ll<-SpatialPoints(locs.ll)
+proj4string(locs.ll) <- CRS("+init=epsg:4326")
+locs.utm<-spTransform(locs.ll, CRSobj = proj4string(land.clip)) ##reproject
+
+##map
+plot(land.clip, add=F)
+plot(locs.utm, add=T)
+
+map <- ggplot(data=data.sp) + coord_equal()
+map <- map + geom_polygon(aes(long, lat, group=group), data=land.clip, fill="light grey")
+map <- map + geom_polygon(data= ponds.df, aes(long, lat, group=group), color="black", fill="grey")
+map <- map + geom_point(data = data.frame(coordinates(locs.utm), Species = data$common_name), aes(longitude, latitude, color=Species))
+map <- map + scale_x_continuous(name = "UTM E-W (m)", limits = c(summary(box)$bbox[1,1]-1, summary(box)$bbox[1,2]+1), expand = c(0,0))
+map <- map + scale_y_continuous(name = "UTM N-S (m)", limits = c(summary(box)$bbox[2,1]-1, summary(box)$bbox[2,2]+1), expand = c(0,0))
+map <- map + theme_classic() #+ theme(panel.background = element_rect(fill= "grey"))
+map <- map + geom_path(aes(long, lat), data = box)
+map <- map + annotate("text", label = "San Francisco\n Bay", x = 575700, y = 4154000, size = 3, colour = "dark blue")
+#map <- map + theme(legend.position = c(0.85, 0.85))
+#map <- map + facet_wrap(facets = ~frac)
+map <- map + labs(fill='Pond Complex') 
+#map <- map + theme(axis.text.x=element_text(angle = 90, vjust = 0.5, hjust = 1, size = 8), axis.text.y = element_text(size=8))
+map <- map + theme(axis.text.x=element_blank(), axis.text.y = element_blank())
+map <- map + theme(legend.position = c(0.76, 0.9))
+map
+
+#png(filename = str_c(file.path, "/map.png"), units="in", width=6.5, height=7,  res=400);print(map); dev.off()
