@@ -5,13 +5,15 @@
 ##LOAD REQUIRED PACAKGES
 library(RODBC) ##required to connect to Access database
 library(stringr)
+library(dplyr)
+library(tidyr) ##required for spread
 
 ##CREATE FOLDER FOR FIGURES
 dir.create(str_c("figures.", Sys.Date()))
 file.path<-str_c("figures.", Sys.Date())
 
 ##LOAD SALT POND DATA
-wb<-"S:/Science/Waterbird/Databases - enter data here!/Cargill Pond Surveys/USGS data from Cheryl 29Jan2018/USGS_SFBBO_pond_data_26Feb2018.accdb" ##database filepath
+wb<-"S:/Science/Waterbird/Databases - enter data here!/Cargill Pond Surveys/USGS data from Cheryl 29Jan2018/USGS_SFBBO_pond_data_03Jul2019.accdb" ##database filepath
 
 con<-odbcConnectAccess2007(wb) ##open connection to database
 
