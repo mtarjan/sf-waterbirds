@@ -11,25 +11,6 @@ library(stringr)
 library(auk)
 #auk::auk_set_ebd_path("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2019 Waterbird Trend Assessment/sf-waterbirds/phalarope_ebird_data")
 
-#ebd<-auk_ebd(file = "ebd_US-CA-001_renpha_201501_201906_relMay-2019.txt")
-##define filters
-#ebd_filters <- ebd %>% 
-  #auk_species("Wood Thrush") %>% 
-  ## southeastern coastal plain bcr
-  #auk_bcr(bcr = 27) %>% 
-  ## june, use * to get data from any year
-  #auk_date(date = c("*-06-01", "*-06-30")) %>% 
-  ## restrict to the standard traveling and stationary count protocols
-  ##auk_protocol(protocol = c("Stationary", "Traveling")) %>% 
-#  auk_complete()
-#ebd_filters
-
-##skip pervious code and just read in pre-subsetted file
-#data<-read_ebd("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2019 Waterbird Trend Assessment/sf-waterbirds/phalarope_ebird_data/ebd_US-CA-001_renpha_201501_201906_relMay-2019.txt")
-#data2<-read_ebd("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2019 Waterbird Trend Assessment/sf-waterbirds/phalarope_ebird_data/location2/ebd_US-CA-085_renpha_201501_201906_relMay-2019.txt")
-
-#data<-rbind(data.frame(data), data.frame(data2))
-
 data.folders<-"S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2019 Waterbird Trend Assessment/sf-waterbirds/phalarope_ebird_data/"
 data<-dim(0)
 for (j in 1:length(list.files(data.folders))) {
@@ -42,6 +23,7 @@ for (j in 1:length(list.files(data.folders))) {
 
 ##plot number of birds observed over time
 data.plot<-subset(data, format(observation_date, "%m") %in% c("06","07","08","09"))
+#data.plot<-data
 fig <- ggplot(data.plot, aes(x= as.Date(format(observation_date, "%m-%d"), "%m-%d"), y = as.numeric(observation_count), color = common_name))
 fig <- fig + geom_point() #+ geom_line()
 #fig <- fig + geom_smooth(method = "loess", se=F)
@@ -51,7 +33,41 @@ fig <- fig + scale_x_date(date_breaks = "1 week", date_labels = "%b %d")
 fig <- fig + xlab("Date") + ylab("Number of phalarope")
 fig
 
-##find peak 
+##find peak date by species
+data.pred<-dim(0)
+survey.date<-dim(0)
+for (j in 1:length(unique(data$common_name))) { ##for each species
+  data.temp<-subset(data, common_name==unique(data$common_name)[j])
+  data.temp$doy<-as.numeric(strftime(data.temp$observation_date, format = "%j")) ##create of day of year variable
+  ##subset to select dates of interest (late summer/early fall)
+  data.temp<-subset(data.temp, doy > 160 & doy < 300)
+  ##add numeric count and remove NA observations
+  data.temp$count<-as.numeric(data.temp$observation_count)
+  data.temp<-subset(data.temp, is.na(count)==F)
+  ##fit model
+  model.temp<-nls(count ~ k*exp(-1/2*(doy-mu)^2/sigma^2), start=c(mu=250,sigma=44,k=33) , data = data.temp)
+  data.temp$pred<-predict(model.temp, newdata=data.temp)
+  data.pred<-rbind(data.pred, data.temp)
+  
+  #plot(data.temp$doy, data.temp$count); points(data.temp$doy, data.temp$pred, col="red")
+  ##estimate date of peak count
+  max.temp<-data.temp$observation_date[which.max(data.temp$pred)]
+  survey.date<-rbind(survey.date, data.frame(species=unique(data$common_name)[j], max.date=format(max.temp, "%m-%d"), mu = coef(model.temp)[1], sigma=coef(model.temp)[2]))
+}
+
+##see date with max counts from model
+survey.date
+
+##plot counts with fitted curves
+fig <- ggplot(data.pred, aes(x= as.Date(format(observation_date, "%m-%d"), "%m-%d"), y = as.numeric(observation_count), color = common_name))
+fig <- fig + geom_point() 
+fig <- fig + geom_line(aes(x=as.Date(format(observation_date, "%m-%d"), "%m-%d"), y=pred*10))
+#fig <- fig + stat_function(function(doy) k*exp(-1/2*(doy-mu)^2/sigma^2))
+fig <- fig + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+fig <- fig + scale_x_date(date_breaks = "1 week", date_labels = "%b %d")
+fig <- fig + xlab("Date") + ylab("Number of phalarope")
+fig <- fig + scale_y_continuous(sec.axis = sec_axis(~ . /10, name = "Fitted curve"))
+fig
 
 ##SALT POND DATABASE PHALAROPES
 ##LOAD SALT POND DATA
