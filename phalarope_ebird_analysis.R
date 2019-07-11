@@ -22,6 +22,33 @@ for (j in 1:length(list.files(data.folders))) {
   data<-rbind(data, data.frame(data.temp))
 }
 
+##LOAD FROM FULL EBIRD DATASET
+ebd <- auk_ebd("ebd_relDec-2018.txt", 
+               file_sampling = "ebd_sampling_relDec-2018.txt")
+ebd_filters <- ebd %>% 
+  auk_species("Phalaropus lobatus", "Phalaropus fulicarius", "Phalaropus tricolor", "Phalaropus spp") %>% 
+  # southeastern coastal plain bcr
+  auk_state(state = "US-CA") %>% 
+  # restrict to the standard traveling and stationary count protocols
+  auk_protocol(protocol = c("Stationary", "Traveling")) %>% 
+  auk_complete()
+ebd_filters
+
+# output files
+data_dir <- "data"
+if (!dir.exists(data_dir)) {
+  dir.create(data_dir)
+}
+f_ebd <- file.path(data_dir, "ebd_woothr_june_bcr27.txt")
+f_sampling <- file.path(data_dir, "ebd_june_bcr27_sampling.txt")
+
+# only run if the files don't already exist
+if (!file.exists(f_ebd)) {
+  auk_filter(ebd_filters, file = f_ebd, file_sampling = f_sampling)
+}
+
+ebd_zf <- auk_zerofill(f_ebd, f_sampling, collapse = TRUE)
+
 ##SALT POND DATABASE PHALAROPES
 ##LOAD SALT POND DATA
 if (exists(x="dat.complete")==F) {
