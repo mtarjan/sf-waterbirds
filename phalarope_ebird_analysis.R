@@ -51,19 +51,20 @@ data$source<-"eBird"
 phal<-rbind(phal, subset(data, select=c("scientific_name", "observation_count", "latitude", "longitude", "observation_date", "source")))
 
 #select data in south bay only
-phal.sb<-subset(phal, latitude >= 37.39884 & latitude <= 37.64138 & longitude >= -122.23960 & longitude <= -121.94052 & scientific_name %in% c("Phalaropus lobatus", "Phalaropus tricolor") & as.numeric(format(observation_date, "%Y")) > 2005)
+phal.sb<-subset(phal, latitude >= 37.39884 & latitude <= 37.64138 & longitude >= -122.23960 & longitude <= -121.94052 & scientific_name %in% c("Phalaropus lobatus", "Phalaropus tricolor") & as.numeric(format(observation_date, "%Y")) > 2004)
 
 ##PLOTS
 ##plot number of birds observed over time
 data.plot<-subset(phal.sb, format(observation_date, "%m") %in% c("06","07","08","09") & scientific_name %in% c("Phalaropus lobatus", "Phalaropus tricolor"))
+data.plot<-subset(phal.sb, scientific_name %in% c("Phalaropus lobatus", "Phalaropus tricolor"))
 #data.plot<-data
 fig <- ggplot(data.plot, aes(x= as.Date(format(observation_date, "%m-%d"), "%m-%d"), y = as.numeric(observation_count), color = scientific_name))
 fig <- fig + geom_point() #+ geom_line()
 #fig <- fig + geom_smooth(method = "loess", se=F)
-#fig <- fig + facet_grid(format(observation_date, "%Y")~., scales="free")
-fig <- fig + facet_grid(source~., scales="free")
+fig <- fig + facet_grid(format(observation_date, "%Y")~source, scales="free")
+#fig <- fig + facet_grid(source~., scales="free")
 fig <- fig + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-fig <- fig + scale_x_date(date_breaks = "1 week", date_labels = "%b %d")
+fig <- fig + scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d")
 fig <- fig + xlab("Date") + ylab("Number of phalarope")
 fig
 
