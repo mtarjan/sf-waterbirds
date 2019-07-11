@@ -51,7 +51,7 @@ data$source<-"eBird"
 phal<-rbind(phal, subset(data, select=c("scientific_name", "observation_count", "latitude", "longitude", "observation_date", "source")))
 
 #select data in south bay only
-phal.sb<-subset(phal, latitude >= 37.39884 & latitude <= 37.64138 & longitude >= -122.23960 & longitude <= -121.94052 & scientific_name %in% c("Phalaropus lobatus", "Phalaropus tricolor"))
+phal.sb<-subset(phal, latitude >= 37.39884 & latitude <= 37.64138 & longitude >= -122.23960 & longitude <= -121.94052 & scientific_name %in% c("Phalaropus lobatus", "Phalaropus tricolor") & as.numeric(format(observation_date, "%Y")) > 2005)
 
 ##PLOTS
 ##plot number of birds observed over time
@@ -124,8 +124,6 @@ fig
 #fig
 
 ##MAP
-plot(y = data$latitude, x = data$longitude)
-
 library(rgdal)
 library(rgeos) ##required for gintersection
 library(maptools) ##required for fortify
@@ -176,22 +174,23 @@ proj4string(locs.ll) <- CRS("+init=epsg:4326")
 locs.utm<-spTransform(locs.ll, CRSobj = proj4string(land.clip)) ##reproject
 
 ##map
-map <- ggplot(data=subset(phal.sb, as.numeric(format(observation_date, "%y")) > 14)) + coord_equal()
+map <- ggplot(data=phal.sb) + coord_equal()
 map <- map + geom_polygon(aes(long, lat, group=group), data=land.clip, fill="light grey")
 map <- map + geom_polygon(data= ponds.df, aes(long, lat, group=group), color="black", fill="grey")
-map <- map + geom_point(data = data.frame(coordinates(locs.utm), Species = phal.sb$scientific_name, Source=factor(phal.sb$source), Abundance=as.numeric(phal.sb$observation_count)), aes(longitude, latitude, color=Species, shape=Source, size=Abundance))
-map <- map + scale_size_area(max_size=10)
+#map <- map + geom_point(data = data.frame(coordinates(locs.utm), Species = phal.sb$scientific_name, Source=factor(phal.sb$source), Abundance=as.numeric(phal.sb$observation_count)), aes(longitude, latitude, color=Species, shape=Source, size=Abundance))
+map <- map + geom_point(data = data.frame(coordinates(locs.utm), Species = phal.sb$scientific_name, Source=factor(phal.sb$source), Abundance=as.numeric(phal.sb$observation_count)), aes(longitude, latitude, size = Abundance))
+map <- map + facet_grid(facets = Source~Species)
+map <- map + scale_size_area(max_size=8)
 map <- map + scale_x_continuous(name = "UTM E-W (m)", limits = c(summary(box)$bbox[1,1]-1, summary(box)$bbox[1,2]+1), expand = c(0,0))
 map <- map + scale_y_continuous(name = "UTM N-S (m)", limits = c(summary(box)$bbox[2,1]-1, summary(box)$bbox[2,2]+1), expand = c(0,0))
 map <- map + theme_classic() #+ theme(panel.background = element_rect(fill= "grey"))
 map <- map + geom_path(aes(long, lat), data = box)
-map <- map + annotate("text", label = "San Francisco\n Bay", x = 571500, y = 4160000, size = 5, colour = "dark blue")
-#map <- map + theme(legend.position = c(0.85, 0.85))
-#map <- map + facet_wrap(facets = ~frac)
+map <- map + annotate("text", label = "San Francisco\n Bay", x = 571500, y = 4160000, size = 3, colour = "dark blue")
+map <- map + theme(legend.position = "right")
 map <- map + labs(fill='Pond Complex') 
-#map <- map + theme(axis.text.x=element_text(angle = 90, vjust = 0.5, hjust = 1, size = 8), axis.text.y = element_text(size=8))
 map <- map + theme(axis.text.x=element_blank(), axis.text.y = element_blank())
-map <- map + theme(legend.position = c(0.8, 0.7)) + guides(size = guide_legend(nrow = 2, byrow = T))
+#map <- map + theme(legend.position = c(0.8, 0.7)) + guides(size = guide_legend(nrow = 2, byrow = T))
+map <- map + theme(axis.ticks=element_blank())
 map
 
 png(filename = str_c(file.path, "/map.png"), units="in", width=6.5, height=7,  res=400);print(map); dev.off()
