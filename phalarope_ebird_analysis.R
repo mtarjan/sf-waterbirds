@@ -10,27 +10,27 @@ library(dplyr)
 
 #install.packages("auk")
 library(auk)
-#auk::auk_set_ebd_path("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2019 Waterbird Trend Assessment/sf-waterbirds/phalarope_ebird_data")
+#auk::auk_set_ebd_path("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2019 Waterbird Trend Assessment/sf-waterbirds/eBird_data", overwrite=T)
 
 ##EBIRD DATA LOADING
-data.folders<-"S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2019 Waterbird Trend Assessment/sf-waterbirds/phalarope_ebird_data/"
-data<-dim(0)
-for (j in 1:length(list.files(data.folders))) {
-  data.folder<-str_c(data.folders, list.files(data.folders)[j], "/")
-  file.temp<-list.files(data.folder)[which(str_detect(string = list.files(data.folder), pattern = "ebd"))]
-  data.temp<-read_ebd(str_c(data.folder, file.temp))
-  data<-rbind(data, data.frame(data.temp))
-}
+#data.folders<-"S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2019 Waterbird Trend Assessment/sf-waterbirds/phalarope_ebird_data/"
+#data<-dim(0)
+#for (j in 1:length(list.files(data.folders))) {
+#  data.folder<-str_c(data.folders, list.files(data.folders)[j], "/")
+#  file.temp<-list.files(data.folder)[which(str_detect(string = list.files(data.folder), pattern = "ebd"))]
+#  data.temp<-read_ebd(str_c(data.folder, file.temp))
+#  data<-rbind(data, data.frame(data.temp))
+#}
 
 ##LOAD FROM FULL EBIRD DATASET
-ebd <- auk_ebd("ebd_relDec-2018.txt", 
-               file_sampling = "ebd_sampling_relDec-2018.txt")
+ebd <- auk_ebd("ebd_relMay-2019/ebd_relMay-2019/ebd_relMay-2019.txt", 
+               file_sampling = "ebd_sampling_relMay-2019/ebd_sampling_relMay-2019/ebd_sampling_relMay-2019.txt")
 ebd_filters <- ebd %>% 
-  auk_species("Phalaropus lobatus", "Phalaropus fulicarius", "Phalaropus tricolor", "Phalaropus spp") %>% 
+  auk_species(c("Phalaropus lobatus", "Phalaropus fulicarius", "Phalaropus tricolor", "Phalaropus sp.")) %>% 
   # southeastern coastal plain bcr
   auk_state(state = "US-CA") %>% 
   # restrict to the standard traveling and stationary count protocols
-  auk_protocol(protocol = c("Stationary", "Traveling")) %>% 
+  #auk_protocol(protocol = c("Stationary", "Traveling")) %>% 
   auk_complete()
 ebd_filters
 
@@ -39,8 +39,8 @@ data_dir <- "data"
 if (!dir.exists(data_dir)) {
   dir.create(data_dir)
 }
-f_ebd <- file.path(data_dir, "ebd_woothr_june_bcr27.txt")
-f_sampling <- file.path(data_dir, "ebd_june_bcr27_sampling.txt")
+f_ebd <- file.path(data_dir, "ebd_phal_CA.txt")
+f_sampling <- file.path(data_dir, "ebd_phal_CA_sampling.txt")
 
 # only run if the files don't already exist
 if (!file.exists(f_ebd)) {
@@ -48,6 +48,7 @@ if (!file.exists(f_ebd)) {
 }
 
 ebd_zf <- auk_zerofill(f_ebd, f_sampling, collapse = TRUE)
+data<-data.frame(ebd_zf)
 
 ##SALT POND DATABASE PHALAROPES
 ##LOAD SALT POND DATA
@@ -75,25 +76,34 @@ data.sp.ll$scientific_name[which(acronyms!='NA')]<-acronyms[which(acronyms!='NA'
 phal<-subset(data.sp.ll, select=c("scientific_name", "abun", "y", "x", "CountDate")) %>% rename(observation_count=abun, longitude=x, latitude=y, observation_date=CountDate)
 phal$source<-"SFBBO"
 data$source<-"eBird"
-phal<-rbind(phal, subset(data, select=c("scientific_name", "observation_count", "latitude", "longitude", "observation_date", "source")))
+phal<-rbind(phal, subset(data, latitude >= 37.39884 & latitude <= 37.64138 & longitude >= -122.23960 & longitude <= -121.94052, select=c("scientific_name", "observation_count", "latitude", "longitude", "observation_date", "source")))
 
 #select data in south bay only
-phal.sb<-subset(phal, latitude >= 37.39884 & latitude <= 37.64138 & longitude >= -122.23960 & longitude <= -121.94052 & scientific_name %in% c("Phalaropus lobatus", "Phalaropus tricolor") & as.numeric(format(observation_date, "%Y")) > 2004)
+phal.sb<-subset(phal, latitude >= 37.39884 & latitude <= 37.64138 & longitude >= -122.23960 & longitude <= -121.94052 & as.numeric(format(observation_date, "%Y")) > 2004)
+
+##number of observations of each species
+table(subset(phal.sb, as.numeric(observation_count)>0 & source=="eBird")$scientific_name)
+
+##select two species
+phal.sb<-subset(phal.sb, scientific_name %in% c("Phalaropus lobatus", "Phalaropus tricolor"))
 
 ##PLOTS
 ##plot number of birds observed over time
-data.plot<-subset(phal.sb, format(observation_date, "%m") %in% c("06","07","08","09") & scientific_name %in% c("Phalaropus lobatus", "Phalaropus tricolor"))
-data.plot<-subset(phal.sb, scientific_name %in% c("Phalaropus lobatus", "Phalaropus tricolor"))
+#data.plot<-subset(phal.sb, format(observation_date, "%m") %in% c("06","07","08","09") & scientific_name %in% c("Phalaropus lobatus", "Phalaropus tricolor"))
+data.plot<-subset(phal.sb, scientific_name %in% c("Phalaropus lobatus", "Phalaropus tricolor") & as.numeric(observation_count)>0)
 #data.plot<-data
 fig <- ggplot(data.plot, aes(x= as.Date(format(observation_date, "%m-%d"), "%m-%d"), y = as.numeric(observation_count), color = scientific_name))
 fig <- fig + geom_point() #+ geom_line()
 #fig <- fig + geom_smooth(method = "loess", se=F)
 fig <- fig + facet_grid(format(observation_date, "%Y")~source, scales="free")
 #fig <- fig + facet_grid(source~., scales="free")
-fig <- fig + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-fig <- fig + scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d")
+fig <- fig + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust =0.5))
+fig <- fig + scale_x_date(date_breaks = "3 weeks", date_labels = "%b %d")
 fig <- fig + xlab("Date") + ylab("Number of phalarope")
+fig <- fig + labs(color="Species")
 fig
+
+png(filename = str_c(file.path, "/phal.counts.png"), units="in", width=6.5, height=8,  res=400);print(fig); dev.off()
 
 ##find peak date by species
 data.pred<-dim(0)
@@ -126,16 +136,21 @@ for (j in 1:length(unique(phal.sb$scientific_name))) { ##for each species
 survey.date
 
 ##plot counts with fitted curves
-fig <- ggplot(data.pred, aes(x= as.Date(format(observation_date, "%m-%d"), "%m-%d"), y = as.numeric(observation_count), color = scientific_name))
+fig <- ggplot(subset(data.pred, count<5000), aes(x= as.Date(format(observation_date, "%m-%d"), "%m-%d"), y = as.numeric(observation_count), color = scientific_name))
 fig <- fig + geom_point() 
 #fig <- fig + geom_line(aes(x=as.Date(format(observation_date, "%m-%d"), "%m-%d"), y=pred*10))
-fig <- fig + geom_line(data= data.curve, aes(x=as.Date(format(as.Date(as.character(doy), "%j"), "%m-%d"), "%m-%d"), y=pred*10))
+fig <- fig + geom_line(data= data.curve, aes(x=as.Date(format(as.Date(as.character(doy), "%j"), "%m-%d"), "%m-%d"), y=pred*100))
 #fig <- fig + stat_function(function(doy) k*exp(-1/2*(doy-mu)^2/sigma^2))
-fig <- fig + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+fig <- fig + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5))
 fig <- fig + scale_x_date(date_breaks = "1 week", date_labels = "%b %d")
 fig <- fig + xlab("Date") + ylab("Number of phalarope")
-fig <- fig + scale_y_continuous(expand = c(0,0), sec.axis = sec_axis(~ . /10, name = "Fitted curve"))
+fig <- fig + scale_y_continuous(expand = c(0,0), sec.axis = sec_axis(~ . /100, name = "Predicted count"))
+fig <- fig + labs(color="Species")
+fig <- fig + theme_classic()
+fig <- fig + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust =0.5))
 fig
+
+png(filename = str_c(file.path, "/phal.curves.png"), units="in", width=6.5, height=4,  res=400);print(fig); dev.off()
 
 ##plot salt pond counts
 #data.plot<-subset(data.sp, format(CountDate, "%m") %in% c("06","07","08","09") & SpeciesCode %in% c("RNPH", "WIPH"))
@@ -196,17 +211,18 @@ ponds.df$Pond<-gsub(pattern = "N4Ab", replacement = "N4AB", x = ponds.df$Pond)
 ponds.df$Pond<-gsub(pattern = "R5S", replacement = "RS5", x = ponds.df$Pond)
 
 ##prep sighting locations
-locs.ll<-subset(phal.sb, select=c("longitude", "latitude"))
+locs.ll<-subset(phal.sb, as.numeric(observation_count)>0, select=c("longitude", "latitude"))
 locs.ll<-SpatialPoints(locs.ll)
 proj4string(locs.ll) <- CRS("+init=epsg:4326")
 locs.utm<-spTransform(locs.ll, CRSobj = proj4string(land.clip)) ##reproject
 
 ##map
-map <- ggplot(data=phal.sb) + coord_equal()
+data.plot<-subset(phal.sb, as.numeric(observation_count)>0)
+map <- ggplot(data=data.plot) + coord_equal()
 map <- map + geom_polygon(aes(long, lat, group=group), data=land.clip, fill="light grey")
 map <- map + geom_polygon(data= ponds.df, aes(long, lat, group=group), color="black", fill="grey")
 #map <- map + geom_point(data = data.frame(coordinates(locs.utm), Species = phal.sb$scientific_name, Source=factor(phal.sb$source), Abundance=as.numeric(phal.sb$observation_count)), aes(longitude, latitude, color=Species, shape=Source, size=Abundance))
-map <- map + geom_point(data = data.frame(coordinates(locs.utm), Species = phal.sb$scientific_name, Source=factor(phal.sb$source), Abundance=as.numeric(phal.sb$observation_count)), aes(longitude, latitude, size = Abundance))
+map <- map + geom_point(data = data.frame(coordinates(locs.utm), Species = data.plot$scientific_name, Source=factor(data.plot$source), Abundance=as.numeric(data.plot$observation_count)), aes(longitude, latitude, size = Abundance), alpha=1/10, color="blue")
 map <- map + facet_grid(facets = Source~Species)
 map <- map + scale_size_area(max_size=8)
 map <- map + scale_x_continuous(name = "UTM E-W (m)", limits = c(summary(box)$bbox[1,1]-1, summary(box)$bbox[1,2]+1), expand = c(0,0))
@@ -222,3 +238,27 @@ map <- map + theme(axis.ticks=element_blank())
 map
 
 png(filename = str_c(file.path, "/map.png"), units="in", width=6.5, height=7,  res=400);print(map); dev.off()
+
+##TRENDS OVER TIME
+data.plot<-subset(phal.sb, source=="eBird" & as.numeric(format(observation_date, "%Y")) < 2019 & format(observation_date, "%m") %in% c("06","07","08","09")) %>% group_by(scientific_name, year = as.numeric(format(observation_date, "%Y"))) %>% summarise(av = mean(as.numeric(observation_count), na.rm=T)) %>% data.frame() #mean ebird count
+fig <- ggplot(data = data.plot, aes(x = year, y = av, color=scientific_name))
+fig <- fig + geom_point() + geom_smooth(method="loess", se=F)
+fig <- fig + scale_y_continuous(expand = c(0,0), limits = c(0,max(data.plot$av)*1.1))
+fig <- fig + scale_x_continuous(breaks = seq(2004, 2019, 1))
+fig <- fig + theme_classic()
+fig <- fig + xlab("Year") + ylab("Mean number of phalaropes") + labs(color="Species")
+fig <- fig + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust =0.5))
+fig
+
+png(filename = str_c(file.path, "/eBird.trend.png"), units="in", width=6.5, height=4,  res=400);print(fig); dev.off()
+
+##SITES TO SURVEY
+data.pond<-data.sp.ll %>% group_by(Pond) %>% summarise(summed=sum(abun)) %>% data.frame()
+data.pond<-data.pond[order(data.pond$summed, decreasing = T),]
+for (j in 1:nrow(data.pond)) {
+  per.temp<-sum(data.pond$summed[1:j])/sum(data.pond$summed)
+  if (per.temp>0.95) {
+    survey.sites<-data.pond$Pond[1:j]
+    break
+  }
+}
