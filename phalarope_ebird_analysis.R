@@ -50,6 +50,27 @@ if (!file.exists(f_ebd)) {
 ebd_zf <- auk_zerofill(f_ebd, f_sampling, collapse = TRUE)
 data<-data.frame(ebd_zf)
 
+##clean up data
+# function to convert time observation to hours since midnight
+time_to_decimal <- function(x) {
+  x <- hms(x, quiet = TRUE)
+  hour(x) + minute(x) / 60 + second(x) / 3600
+}
+
+# clean up variables
+ebd_zf <- ebd_zf %>% 
+  mutate(
+    # convert X to NA
+    observation_count = if_else(observation_count == "X", 
+                                NA_character_, observation_count),
+    observation_count = as.integer(observation_count),
+    # effort_distance_km to 0 for non-travelling counts
+    effort_distance_km = if_else(protocol_type != "Traveling", 
+                                 0, effort_distance_km),
+    # convert time to decimal hours since midnight
+    time_observations_started = time_to_decimal(time_observations_started)
+  )
+
 ##SALT POND DATABASE PHALAROPES
 ##LOAD SALT POND DATA
 if (exists(x="dat.complete")==F) {
