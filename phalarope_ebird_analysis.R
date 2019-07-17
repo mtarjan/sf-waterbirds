@@ -48,17 +48,25 @@ if (!file.exists(f_ebd)) {
 }
 
 ebd_zf <- auk_zerofill(f_ebd, f_sampling, collapse = TRUE)
-data<-data.frame(ebd_zf)
 
-##clean up data
+data<-data.frame(ebd_zf)
+##restrict data to south bay for processing
+data<-subset(data, latitude >= 37.39884 & latitude <= 37.64138 & longitude >= -122.23960 & longitude <= -121.94052)
+
+##alternatively, read in csv subsetted to south bay
+#data<-read.csv("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2019 Waterbird Trend Assessment/sf-waterbirds/data/ebird_phal_sb_zf.csv")
+
+##clean data
 # function to convert time observation to hours since midnight
 time_to_decimal <- function(x) {
   x <- hms(x, quiet = TRUE)
   hour(x) + minute(x) / 60 + second(x) / 3600
 }
 
+library(lubridate) ##required for time manipulation
+
 # clean up variables
-ebd_zf <- ebd_zf %>% 
+data <- data %>% 
   mutate(
     # convert X to NA
     observation_count = if_else(observation_count == "X", 
@@ -70,6 +78,17 @@ ebd_zf <- ebd_zf %>%
     # convert time to decimal hours since midnight
     time_observations_started = time_to_decimal(time_observations_started)
   )
+
+# additional filtering
+data <- data %>% 
+  filter(
+    # effort filters
+    duration_minutes <= 5 * 60,
+    effort_distance_km <= 5,
+    # last 10 years of data
+    #year(observation_date) >= 2009,
+    # 10 or fewer observers
+    number_observers <= 10)
 
 ##SALT POND DATABASE PHALAROPES
 ##LOAD SALT POND DATA
@@ -97,13 +116,13 @@ data.sp.ll$scientific_name[which(acronyms!='NA')]<-acronyms[which(acronyms!='NA'
 phal<-subset(data.sp.ll, select=c("scientific_name", "abun", "y", "x", "CountDate")) %>% rename(observation_count=abun, longitude=x, latitude=y, observation_date=CountDate)
 phal$source<-"SFBBO"
 data$source<-"eBird"
-phal<-rbind(phal, subset(data, latitude >= 37.39884 & latitude <= 37.64138 & longitude >= -122.23960 & longitude <= -121.94052, select=c("scientific_name", "observation_count", "latitude", "longitude", "observation_date", "source")))
+phal<-rbind(phal, subset(data, select=c("scientific_name", "observation_count", "latitude", "longitude", "observation_date", "source")))
 
 #select data in south bay only
 phal.sb<-subset(phal, latitude >= 37.39884 & latitude <= 37.64138 & longitude >= -122.23960 & longitude <= -121.94052 & as.numeric(format(observation_date, "%Y")) > 2004)
 
 ##number of observations of each species
-table(subset(phal.sb, as.numeric(observation_count)>0 & source=="eBird")$scientific_name)
+table(subset(phal.sb, observation_count>0 & source=="eBird")$scientific_name)
 
 ##select two species
 phal.sb<-subset(phal.sb, scientific_name %in% c("Phalaropus lobatus", "Phalaropus tricolor"))
@@ -111,9 +130,9 @@ phal.sb<-subset(phal.sb, scientific_name %in% c("Phalaropus lobatus", "Phalaropu
 ##PLOTS
 ##plot number of birds observed over time
 #data.plot<-subset(phal.sb, format(observation_date, "%m") %in% c("06","07","08","09") & scientific_name %in% c("Phalaropus lobatus", "Phalaropus tricolor"))
-data.plot<-subset(phal.sb, scientific_name %in% c("Phalaropus lobatus", "Phalaropus tricolor") & as.numeric(observation_count)>0)
+data.plot<-subset(phal.sb, scientific_name %in% c("Phalaropus lobatus", "Phalaropus tricolor") & observation_count>0)
 #data.plot<-data
-fig <- ggplot(data.plot, aes(x= as.Date(format(observation_date, "%m-%d"), "%m-%d"), y = as.numeric(observation_count), color = scientific_name))
+fig <- ggplot(data.plot, aes(x= as.Date(format(observation_date, "%m-%d"), "%m-%d"), y = observation_count, color = scientific_name))
 fig <- fig + geom_point() #+ geom_line()
 #fig <- fig + geom_smooth(method = "loess", se=F)
 fig <- fig + facet_grid(format(observation_date, "%Y")~source, scales="free")
@@ -137,7 +156,7 @@ for (j in 1:length(unique(phal.sb$scientific_name))) { ##for each species
   ##subset to select dates of interest (late summer/early fall)
   data.temp<-subset(data.temp, doy > 160 & doy < 300)
   ##add numeric count and remove NA observations
-  data.temp$count<-as.numeric(data.temp$observation_count)
+  data.temp$count<-data.temp$observation_count
   data.temp<-subset(data.temp, is.na(count)==F)
   ##fit model
   model.temp<-nls(count ~ k*exp(-1/2*(doy-mu)^2/sigma^2), start=c(mu=200,sigma=25,k=220), data = data.temp, control = list(maxiter = 100))
@@ -157,7 +176,7 @@ for (j in 1:length(unique(phal.sb$scientific_name))) { ##for each species
 survey.date
 
 ##plot counts with fitted curves
-fig <- ggplot(subset(data.pred, count<5000), aes(x= as.Date(format(observation_date, "%m-%d"), "%m-%d"), y = as.numeric(observation_count), color = scientific_name))
+fig <- ggplot(subset(data.pred, count<5000), aes(x= as.Date(format(observation_date, "%m-%d"), "%m-%d"), y = observation_count, color = scientific_name))
 fig <- fig + geom_point() 
 #fig <- fig + geom_line(aes(x=as.Date(format(observation_date, "%m-%d"), "%m-%d"), y=pred*10))
 fig <- fig + geom_line(data= data.curve, aes(x=as.Date(format(as.Date(as.character(doy), "%j"), "%m-%d"), "%m-%d"), y=pred*100))
@@ -232,7 +251,7 @@ ponds.df$Pond<-gsub(pattern = "N4Ab", replacement = "N4AB", x = ponds.df$Pond)
 ponds.df$Pond<-gsub(pattern = "R5S", replacement = "RS5", x = ponds.df$Pond)
 
 ##prep sighting locations
-locs.ll<-subset(phal.sb, as.numeric(observation_count)>0, select=c("longitude", "latitude"))
+locs.ll<-subset(phal.sb, observation_count>0, select=c("longitude", "latitude"))
 locs.ll<-SpatialPoints(locs.ll)
 proj4string(locs.ll) <- CRS("+init=epsg:4326")
 locs.utm<-spTransform(locs.ll, CRSobj = proj4string(land.clip)) ##reproject
@@ -260,7 +279,18 @@ map
 
 png(filename = str_c(file.path, "/map.png"), units="in", width=6.5, height=7,  res=400);print(map); dev.off()
 
-##TRENDS OVER TIME
+##SITES TO SURVEY
+data.pond<-data.sp.ll %>% group_by(Pond) %>% summarise(summed=sum(abun)) %>% data.frame()
+data.pond<-data.pond[order(data.pond$summed, decreasing = T),]
+for (j in 1:nrow(data.pond)) {
+  per.temp<-sum(data.pond$summed[1:j])/sum(data.pond$summed)
+  if (per.temp>0.95) {
+    survey.sites<-data.pond$Pond[1:j]
+    break
+  }
+}
+
+##eBird TRENDS OVER TIME
 data.plot<-subset(phal.sb, source=="eBird" & as.numeric(format(observation_date, "%Y")) < 2019 & format(observation_date, "%m") %in% c("06","07","08","09")) %>% group_by(scientific_name, year = as.numeric(format(observation_date, "%Y"))) %>% summarise(av = mean(as.numeric(observation_count), na.rm=T)) %>% data.frame() #mean ebird count
 fig <- ggplot(data = data.plot, aes(x = year, y = av, color=scientific_name))
 fig <- fig + geom_point() + geom_smooth(method="loess", se=F)
@@ -273,13 +303,17 @@ fig
 
 png(filename = str_c(file.path, "/eBird.trend.png"), units="in", width=6.5, height=4,  res=400);print(fig); dev.off()
 
-##SITES TO SURVEY
-data.pond<-data.sp.ll %>% group_by(Pond) %>% summarise(summed=sum(abun)) %>% data.frame()
-data.pond<-data.pond[order(data.pond$summed, decreasing = T),]
-for (j in 1:nrow(data.pond)) {
-  per.temp<-sum(data.pond$summed[1:j])/sum(data.pond$summed)
-  if (per.temp>0.95) {
-    survey.sites<-data.pond$Pond[1:j]
-    break
-  }
-}
+##GAM TRENDS
+##assign location info to ebird data
+##create spatial points for ebird data
+locs.temp<-subset(data, select=c("longitude", "latitude"))
+locs.temp<-SpatialPoints(locs.temp)
+proj4string(locs.temp) <- CRS("+init=epsg:4326")
+locs.temp<-spTransform(locs.temp, CRSobj = proj4string(ponds.poly))
+##check if they are within project polygons
+ebird.pond.locs<-subset(over(x= locs.temp, y = ponds.poly), select=c("Pond", "Complex"))
+##add pond info to ebird data
+data<-cbind(data, ebird.pond.locs)
+rm(locs.temp)
+
+
