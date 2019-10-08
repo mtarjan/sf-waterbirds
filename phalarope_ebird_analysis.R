@@ -49,9 +49,9 @@ if (!file.exists(f_ebd)) {
 
 ebd_zf <- auk_zerofill(f_ebd, f_sampling, collapse = TRUE)
 
-data<-data.frame(ebd_zf)
+data1<-data.frame(ebd_zf)
 ##restrict data to south bay for processing
-data<-subset(data, latitude >= 37.39884 & latitude <= 37.64138 & longitude >= -122.23960 & longitude <= -121.94052)
+data<-subset(data1, latitude >= 37.39884 & latitude <= 37.64138 & longitude >= -122.23960 & longitude <= -121.94052)
 
 ##alternatively, read in csv subsetted to south bay
 #data<-read.csv("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/Reports/2019 Waterbird Trend Assessment/sf-waterbirds/data/ebird_phal_sb_zf.csv")
@@ -169,7 +169,7 @@ for (j in 1:length(unique(phal.sb$scientific_name))) { ##for each species
   #plot(data.temp$doy, data.temp$count); points(data.temp$doy, data.temp$pred, col="red")
   ##estimate date of peak count
   max.temp<-data.temp$observation_date[which.max(data.temp$pred)]
-  survey.date<-rbind(survey.date, data.frame(species=unique(phal.sb$scientific_name)[j], max.date=format(max.temp, "%m-%d"), mu = coef(model.temp)[1], sigma=coef(model.temp)[2]))
+  survey.date<-rbind(survey.date, data.frame(species=unique(phal.sb$scientific_name)[j], max.date=format(max.temp, "%m-%d"), mu = coef(model.temp)[1], sigma=abs(coef(model.temp)[2]), n = nrow(data.temp), k = coef(model.temp)[3]))
 }
 
 ##see date with max counts from model

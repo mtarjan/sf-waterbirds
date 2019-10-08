@@ -78,7 +78,7 @@ fig <- fig + theme(legend.position = "bottom")
 fig
 
 ##write out plots for groups of guilds
-guilds.plot<-list(ducks=c("DABBLER", "DIVER", "RUDU"), shorebirds=c("MEDSHORE", "SMSHORE"), other=c("LETE", "BOGU", "PHAL", "EAGR"))
+guilds.plot<-list(ducks=c("DABBLER", "DIVER", "RUDU"), shorebirds=c("MEDSHORE", "SMSHORE"), other=c("LETE", "BOGU", "PHAL", "EAGR"), phalarope="PHAL")
 
 for (j in 1:length(guilds.plot)) {
   fig <- ggplot(data = subset(count.trends, Species.Guild %in% guilds.plot[[j]]), aes(x = MonthYear, y = abun, color=footprint))
@@ -93,11 +93,11 @@ for (j in 1:length(guilds.plot)) {
   fig <- fig + scale_y_continuous(breaks = function(x) round(seq(from = 0,to = x[2]*1.2,by = (x[2]-0)/10),0), expand = c(0, 0))
   fig <- fig + theme(strip.background = element_rect(colour = "white", fill = "white"))
   fig <- fig + xlab("Year") + ylab("Number of Birds")
-  fig <- fig + theme(legend.position = "bottom")
+  fig <- fig + theme(legend.position = ifelse(j==4, "right", "bottom"))
   fig
   
-  fig.height<-c(3.5, 3.5, 6)
-  fig.width<-c(8, 8, 6)
+  fig.height<-c(3.5, 3.5, 6, 6/1.5)
+  fig.width<-c(8, 8, 6, 8/1.5)
   
   png(filename = str_c(file.path, "/fig.loess.", names(guilds.plot)[j],".png"), units="in", width=fig.width[j], height=fig.height[j],  res=200);print(fig); dev.off()
 }
