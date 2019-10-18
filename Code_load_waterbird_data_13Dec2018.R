@@ -58,6 +58,7 @@ dat2<-unique(dat2)
 
 spp.guild<-unique(subset(dat, SpeciesCode != "NONE", select=c(SpeciesCode, StandardGuild))) ##get unique species and guild combos
 
+##create a count of zero for each species/guild based on "zero bird pond count"
 out<-dim(0)
 for (j in 1:nrow(dat2)) { ##for each pond/survey where no birds were observed
   dat.temp<-dat2[j,] %>% dplyr::slice(rep(1:n(), each = nrow(spp.guild)))

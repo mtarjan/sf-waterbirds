@@ -19,20 +19,30 @@ if (exists(x="dat.complete")==F) {
 head(dat.complete)
 dat<-dat.complete
 
+##rename guilds that have four letter codes that match the unknown species ID
+levels(dat$StandardGuild)[c(7,12, 17)] <- c('GULLS', 'PHALAROPE', 'TERNS')
+
+##remove incomplete survey periods
+dat<-subset(dat, MonthYear > "2002-10-01")
+
 ##sum by species/guild, survey, and complex
 dat.guild<-dat %>% group_by(MonthYear, Season, year, season.yr, footprint, StandardGuild) %>% dplyr::summarise(abun=sum(TotalAbundance, na.rm=T)) %>% data.frame()
 dat.spp<-dat %>% group_by(MonthYear, Season, year, season.yr, footprint, SpeciesCode) %>% dplyr::summarise(abun=sum(TotalAbundance, na.rm=T)) %>% data.frame()
 
+##create a species.guild column
 dat.guild$Species.Guild<-dat.guild$StandardGuild
 dat.spp$Species.Guild<-dat.spp$SpeciesCode
 dat.spp.guild<-rbind(subset(dat.guild, select=-StandardGuild), subset(dat.spp, select=-SpeciesCode))
 
-
+##read SBSPRP targets
 targets<-read.csv("targets.csv")
 
+##calculate percent change from baseline and whether counts are below trigger
 count.trends<-dim(0)
 for (j in 1:nrow(targets)) {
   dat.temp<-subset(dat.spp.guild, Species.Guild == as.character(targets$Species.Guild)[j] & Season == targets$Season[j]) ##get the data for the correct species and season
+  
+  #if (j ==6) {dat.temp<-subset(dat.spp.guild, Species.Guild == as.character(targets$Species.Guild)[j] & Season %in% c("Summer","Fall"))}
 
   ##calc percent change and baseline
   targets$Baseline[j] <- round(mean(subset(dat.temp, footprint =="All" & str_sub(season.yr, -4, -1) %in% c("2005", "2006", "2007"))$abun),0)
@@ -78,7 +88,7 @@ fig <- fig + theme(legend.position = "bottom")
 fig
 
 ##write out plots for groups of guilds
-guilds.plot<-list(ducks=c("DABBLER", "DIVER", "RUDU"), shorebirds=c("MEDSHORE", "SMSHORE"), other=c("LETE", "BOGU", "PHAL", "EAGR"), phalarope="PHAL")
+guilds.plot<-list(ducks=c("DABBLER", "DIVER", "RUDU"), shorebirds=c("MEDSHORE", "SMSHORE"), other=c("LETE", "BOGU", "PHALAROPE", "EAGR"), phalarope="PHALAROPE")
 
 for (j in 1:length(guilds.plot)) {
   fig <- ggplot(data = subset(count.trends, Species.Guild %in% guilds.plot[[j]]), aes(x = MonthYear, y = abun, color=footprint))
