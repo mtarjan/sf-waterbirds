@@ -7,6 +7,7 @@ library(RODBC) ##required to connect to Access database
 library(stringr)
 library(dplyr)
 library(tidyr) ##required for spread
+library(forcats) ##required for fct_recode
 
 ##CREATE FOLDER FOR FIGURES
 dir.create(str_c("figures.", Sys.Date()))
@@ -38,14 +39,10 @@ dat2<-sqlQuery(con, qry); head(dat2) ##import the queried table
 odbcCloseAll()
 
 ##fix speciescode typos
-dat$SpeciesCode<-as.character(dat$SpeciesCode)
-translator <- c('DCCo' = 'DCCO', 
-                'Phal' = 'PHAL',
-                'wesa' = 'WESA',
-                'saph' = 'SAPH',
-                'phal' = 'PHAL') ##old = update
-acronyms<-translator[dat$SpeciesCode]
-dat$SpeciesCode[which(acronyms!='NA')]<-acronyms[which(acronyms!='NA')]
+dat$SpeciesCode <- forcats::fct_recode(dat$SpeciesCode, DCCO = 'DCCo', PHAL = 'phal', WESA = 'wesa', SAPH = 'saph', PHAL = 'Phal') ##old in quotes, new not in quotes
+
+##rename guilds that have four letter codes that match the unknown species ID
+dat$StandardGuild<-forcats::fct_recode(dat$StandardGuild, PHALAROPE = "PHAL", GULLS = "GULL", TERNS = "TERN")
 
 ##add counts of zero for "none" category??
 ##2015 on "none" category doesn't appear in data includingnobirdcounts, only in the table for no bird count info
@@ -95,7 +92,6 @@ dat.complete$footprint<-"SBSPRP"
 dat.complete$footprint[which(dat.complete$complex %in% c("M", "N"))]<-"Salt ponds"
 dat2<-subset(dat.complete, MonthYear >= min(subset(dat.complete, footprint=="Salt ponds")$MonthYear)); dat2$footprint<-"All"
 dat.complete<-rbind(dat.complete, dat2)
-
 
 ##LOAD SFBBO WATERBIRD DATA
 wb.sfbbo<-"S:/Science/Waterbird/Databases - enter data here!/Cargill Pond Surveys/Cargill Pond Surveys.accdb" ##database filepath

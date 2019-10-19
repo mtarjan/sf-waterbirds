@@ -19,9 +19,6 @@ if (exists(x="dat.complete")==F) {
 head(dat.complete)
 dat<-dat.complete
 
-##rename guilds that have four letter codes that match the unknown species ID
-levels(dat$StandardGuild)[c(7,12, 17)] <- c('GULLS', 'PHALAROPE', 'TERNS')
-
 ##remove incomplete survey periods
 dat<-subset(dat, MonthYear > "2002-10-01")
 
