@@ -109,12 +109,12 @@ translator <- c('PHAL' = 'Phalaropus spp',
                 'RNPH' = 'Phalaropus lobatus',
                 'REPH' = 'Phalaropus fulicarius',
                 'WIPH' = 'Phalaropus tricolor') ##old = update
-acronyms<-translator[data.sp.ll$SpeciesCode]
+acronyms<-translator[as.character(data.sp.ll$SpeciesCode)]
 data.sp.ll$scientific_name[which(acronyms!='NA')]<-acronyms[which(acronyms!='NA')]
 
 ##COMBINE DATASETS
 phal<-subset(data.sp.ll, select=c("scientific_name", "abun", "y", "x", "CountDate")) %>% rename(observation_count=abun, longitude=x, latitude=y, observation_date=CountDate)
-phal$source<-"SFBBO"
+phal$source<-"SBSPRP"
 data$source<-"eBird"
 phal<-rbind(phal, subset(data, select=c("scientific_name", "observation_count", "latitude", "longitude", "observation_date", "source")))
 
@@ -143,7 +143,7 @@ fig <- fig + xlab("Date") + ylab("Number of phalarope")
 fig <- fig + labs(color="Species")
 fig
 
-png(filename = str_c(file.path, "/phal.counts.png"), units="in", width=6.5, height=8,  res=400);print(fig); dev.off()
+png(filename = str_c(file.path, "/phal.counts.png"), units="in", width=6.5, height=8,  res=200);print(fig); dev.off()
 
 ##find peak date by species
 data.pred<-dim(0)
@@ -191,6 +191,8 @@ fig <- fig + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust =0.5)
 fig
 
 png(filename = str_c(file.path, "/phal.curves.png"), units="in", width=6.5, height=4,  res=400);print(fig); dev.off()
+
+#png(filename = str_c(file.path, "/phal.curves.poster.png"), units="in", width=6.5/1.25, height=4/1.25,  res=400);print(fig); dev.off()
 
 ##plot salt pond counts
 #data.plot<-subset(data.sp, format(CountDate, "%m") %in% c("06","07","08","09") & SpeciesCode %in% c("RNPH", "WIPH"))
