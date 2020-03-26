@@ -148,8 +148,40 @@ png(filename = str_c(file.path, "/phal.counts.png"), units="in", width=6.5, heig
 
 ##find peak date by species
 data.pred<-dim(0)
+survey.date.by.yr<-dim(0)
+data.curve<-dim(0)
+for (y in 2005:2018) { ##for each year
+  for (j in 1:length(unique(phal.sb$scientific_name))) { ##for each species
+    sp.temp<-unique(phal.sb$scientific_name)[j]
+    data.temp<-subset(phal, scientific_name==sp.temp & source=="eBird" & year(phal$observation_date) == y)
+    data.temp$doy<-as.numeric(strftime(data.temp$observation_date, format = "%j")) ##create of day of year variable
+    ##subset to select dates of interest (late summer/early fall)
+    data.temp<-subset(data.temp, doy > 160 & doy < 300)
+    ##add numeric count and remove NA observations
+    data.temp$count<-data.temp$observation_count
+    data.temp<-subset(data.temp, is.na(count)==F)
+    ##fit model
+    model.temp<-gam::gam(count ~ s(doy), data = data.temp)
+    data.temp$pred<-predict(model.temp, newdata=data.temp)
+    data.pred<-rbind(data.pred, data.temp)
+    pred.temp<-data.frame(scientific_name=sp.temp, doy=min(data.temp$doy):max(data.temp$doy))
+    pred.temp$pred<-predict(model.temp, newdata=pred.temp)
+    data.curve<-rbind(data.curve, pred.temp)
+    
+    ##estimate date of peak count
+    max.temp<-data.temp$observation_date[which.max(data.temp$pred)]
+    survey.date.by.yr<-rbind(survey.date.by.yr, data.frame(year=y, species=unique(phal.sb$scientific_name)[j], max.date=format(max.temp, "%m-%d"), n = nrow(data.temp), aic = summary(model.temp)$aic, df = summary(model.temp)$df[2]))
+  }
+}
+
+##see date with max counts from model for each year
+survey.date.by.yr
+
+##create a model for all years pooled
+data.pred<-dim(0)
 survey.date<-dim(0)
 data.curve<-dim(0)
+
 for (j in 1:length(unique(phal.sb$scientific_name))) { ##for each species
   sp.temp<-unique(phal.sb$scientific_name)[j]
   data.temp<-subset(phal, scientific_name==sp.temp & source=="eBird")
@@ -160,8 +192,6 @@ for (j in 1:length(unique(phal.sb$scientific_name))) { ##for each species
   data.temp$count<-data.temp$observation_count
   data.temp<-subset(data.temp, is.na(count)==F)
   ##fit model
-  #model.temp<-nls(count ~ k*exp(-1/2*(doy-mu)^2/sigma^2), start=c(mu=200,sigma=25,k=220), data = data.temp, control = list(maxiter = 100))
-  ##fit a gam model
   model.temp<-gam::gam(count ~ s(doy), data = data.temp)
   data.temp$pred<-predict(model.temp, newdata=data.temp)
   data.pred<-rbind(data.pred, data.temp)
@@ -169,15 +199,11 @@ for (j in 1:length(unique(phal.sb$scientific_name))) { ##for each species
   pred.temp$pred<-predict(model.temp, newdata=pred.temp)
   data.curve<-rbind(data.curve, pred.temp)
   
-  #plot(data.temp$doy, data.temp$count); points(data.temp$doy, data.temp$pred, col="red")
   ##estimate date of peak count
   max.temp<-data.temp$observation_date[which.max(data.temp$pred)]
-  #survey.date<-rbind(survey.date, data.frame(species=unique(phal.sb$scientific_name)[j], max.date=format(max.temp, "%m-%d"), mu = coef(model.temp)[1], sigma=abs(coef(model.temp)[2]), n = nrow(data.temp), k = coef(model.temp)[3]))
-  ##alternative output for gam
   survey.date<-rbind(survey.date, data.frame(species=unique(phal.sb$scientific_name)[j], max.date=format(max.temp, "%m-%d"), n = nrow(data.temp), aic = summary(model.temp)$aic, df = summary(model.temp)$df[2]))
 }
 
-##see date with max counts from model
 survey.date
 
 ##plot counts with fitted curves
