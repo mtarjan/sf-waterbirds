@@ -275,13 +275,15 @@ if (exists("land.clip")==F) {
   land.clip<-gIntersection(spgeom1 = land.utm, spgeom2=box)
 }
 
+ponds.poly@data$Pond<-gsub(pattern = "N4Aa", replacement = "N4AA", x = ponds.poly@data$Pond)
+ponds.poly@data$Pond<-gsub(pattern = "N4Ab", replacement = "N4AB", x = ponds.poly@data$Pond)
+ponds.poly@data$Pond<-gsub(pattern = "R5S", replacement = "RS5", x = ponds.poly@data$Pond)
+
+
 ponds.poly.df<-ponds.poly
 ponds.poly.df@data$id <- rownames(ponds.poly.df@data)
-ponds.f <- fortify(ponds.poly.df, region = "id")
+ponds.f <- ggplot2::fortify(ponds.poly.df, region = "id")
 ponds.df <- plyr::join(ponds.f, ponds.poly.df@data, by = "id")
-ponds.df$Pond<-gsub(pattern = "N4Aa", replacement = "N4AA", x = ponds.df$Pond)
-ponds.df$Pond<-gsub(pattern = "N4Ab", replacement = "N4AB", x = ponds.df$Pond)
-ponds.df$Pond<-gsub(pattern = "R5S", replacement = "RS5", x = ponds.df$Pond)
 
 ##prep sighting locations
 locs.ll<-subset(phal.sb, observation_count>0, select=c("longitude", "latitude"))
@@ -322,6 +324,55 @@ for (j in 1:nrow(data.pond)) {
     break
   }
 }
+
+##map of sites to survey
+sites.poly<-rgdal::readOGR(dsn = "S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/PHAL survey/PHAL data", layer= "Phalarope survey sites")
+sites.poly <- spTransform(sites.poly, CRS(proj4string(ponds.poly))) # reproject
+
+##add site type to both sets of sites (SBSPRP and eBird)
+ponds.poly@data$type<-"SBSPRP"
+sites.poly@data$type<-"eBird"
+
+all.sites.poly<-ponds.poly[ponds.poly@data$Pond %in% survey.sites,] ##subset to phal sites in sbsprp
+all.sites.poly@data<-subset(all.sites.poly@data, select=c(Pond, Area, type)) ##subset the data
+colnames(all.sites.poly@data)<-c("Site.Name", "Area", "type") ##rename columns to match other phal sites
+sites.poly@data<-subset(sites.poly@data, select=c(Site.Name, Area, type)) ##subset data for other phal sites
+##merge two shapefiles for one phal site shapefile
+all.sites.poly<-rbind(all.sites.poly, sites.poly)
+
+##add centroid for adding labels
+all.sites.poly@data<-cbind(all.sites.poly@data, as.data.frame(coordinates(all.sites.poly)))
+
+##legend
+legend.text<-data.frame(id=1:nrow(all.sites.poly@data), equal="=",site=all.sites.poly@data$Site.Name)
+legend.text<-tidyr::unite(data = legend.text, col="legend", sep=" ")
+#legend.text<-data.frame(Site=all.sites.poly@data$Site.Name)
+
+library(gridExtra)
+mytheme <- gridExtra::ttheme_default(
+  core = list(fg_params=list(cex = 0.5)),
+  colhead = list(fg_params=list(cex = 0.5)),
+  rowhead = list(fg_params=list(cex = 0.5)))
+
+map <- ggplot(data= all.sites.poly@data) + coord_equal()
+map <- map + geom_polygon(aes(long, lat, group=group), data=land.clip, fill="light grey")
+map <- map + geom_polygon(data= ponds.df, aes(long, lat, group=group), color="black", fill="grey")
+map <- map + geom_polygon(data= all.sites.poly, aes(long, lat, group=group), color="red", fill="grey", size=1.25)
+map <- map + scale_x_continuous(name = "UTM E-W (m)", limits = c(summary(box)$bbox[1,1]-1, summary(box)$bbox[1,2]+1), expand = c(0,0))
+map <- map + scale_y_continuous(name = "UTM N-S (m)", limits = c(summary(box)$bbox[2,1]-1, summary(box)$bbox[2,2]+1), expand = c(0,0))
+map <- map + theme_classic() #+ theme(panel.background = element_rect(fill= "grey"))
+map <- map + geom_path(aes(long, lat), data = box)
+map <- map + annotate("text", label = "San Francisco\n Bay", x = 571500, y = 4160000, size = 4, colour = "dark blue")
+#map <- map + theme(axis.text.x=element_blank(), axis.text.y = element_blank())
+#map <- map + theme(axis.ticks=element_blank())
+map <- map + geom_text(aes(label = 1:nrow(all.sites.poly@data), x = V1, y = V2, fontface="bold"))
+map <- map + annotation_custom(gridExtra::tableGrob(legend.text[1:10,], theme=mytheme), xmin=579000, xmax=590500, ymin=4150000, ymax=4167000)
+map <- map + annotation_custom(gridExtra::tableGrob(legend.text[11:20,], theme=mytheme), xmin=584500, xmax=590500, ymin=4150000, ymax=4167000)
+map <- map + annotation_custom(gridExtra::tableGrob(legend.text[21:30,], theme=mytheme), xmin=590000, xmax=590500, ymin=4150000, ymax=4167000)
+map <- map + annotation_custom(gridExtra::tableGrob(legend.text[31:nrow(legend.text),], theme=mytheme), xmin=570000, xmax=576000, ymin=4140000, ymax=4149000)
+map
+
+png(filename = str_c(file.path, "/survey.sites.png"), units="in", width=6.5, height=7,  res=400);print(map); dev.off()
 
 ##eBird TRENDS OVER TIME
 data.plot<-subset(phal.sb, source=="eBird" & as.numeric(format(observation_date, "%Y")) < 2019 & format(observation_date, "%m") %in% c("06","07","08","09")) %>% group_by(scientific_name, year = as.numeric(format(observation_date, "%Y"))) %>% summarise(av = mean(as.numeric(observation_count), na.rm=T)) %>% data.frame() #mean ebird count
