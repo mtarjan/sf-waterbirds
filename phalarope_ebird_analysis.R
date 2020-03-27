@@ -328,6 +328,7 @@ for (j in 1:nrow(data.pond)) {
 ##map of sites to survey
 sites.poly<-rgdal::readOGR(dsn = "S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/PHAL survey/PHAL data", layer= "Phalarope survey sites")
 sites.poly <- spTransform(sites.poly, CRS(proj4string(ponds.poly))) # reproject
+sites.poly<-sites.poly[sites.poly@data$Site.Name != "Crittenden Marsh East" & sites.poly@data$Site.Name != "Spreckles Marsh",]
 
 ##add site type to both sets of sites (SBSPRP and eBird)
 ponds.poly@data$type<-"SBSPRP"
@@ -350,7 +351,7 @@ legend.text<-tidyr::unite(data = legend.text, col="legend", sep=" ")
 
 library(gridExtra)
 mytheme <- gridExtra::ttheme_default(
-  core = list(fg_params=list(cex = 0.5)),
+  core = list(fg_params=list(cex = 0.75)),
   colhead = list(fg_params=list(cex = 0.5)),
   rowhead = list(fg_params=list(cex = 0.5)))
 
@@ -366,9 +367,9 @@ map <- map + annotate("text", label = "San Francisco\n Bay", x = 571500, y = 416
 #map <- map + theme(axis.text.x=element_blank(), axis.text.y = element_blank())
 #map <- map + theme(axis.ticks=element_blank())
 map <- map + geom_text(aes(label = 1:nrow(all.sites.poly@data), x = V1, y = V2, fontface="bold"))
-map <- map + annotation_custom(gridExtra::tableGrob(legend.text[1:10,], theme=mytheme), xmin=579000, xmax=590500, ymin=4150000, ymax=4167000)
-map <- map + annotation_custom(gridExtra::tableGrob(legend.text[11:20,], theme=mytheme), xmin=584500, xmax=590500, ymin=4150000, ymax=4167000)
-map <- map + annotation_custom(gridExtra::tableGrob(legend.text[21:30,], theme=mytheme), xmin=590000, xmax=590500, ymin=4150000, ymax=4167000)
+map <- map + annotation_custom(gridExtra::tableGrob(legend.text[1:10,], theme=mytheme), xmin=579000, xmax=590700, ymin=4150000, ymax=4167000)
+map <- map + annotation_custom(gridExtra::tableGrob(legend.text[11:20,], theme=mytheme), xmin=585200, xmax=590700, ymin=4150000, ymax=4167000)
+map <- map + annotation_custom(gridExtra::tableGrob(legend.text[21:30,], theme=mytheme), xmin=591100, xmax=591200, ymin=4150000, ymax=4167000)
 map <- map + annotation_custom(gridExtra::tableGrob(legend.text[31:nrow(legend.text),], theme=mytheme), xmin=570000, xmax=576000, ymin=4140000, ymax=4149000)
 map
 
