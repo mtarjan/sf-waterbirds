@@ -94,7 +94,7 @@ dat2<-subset(dat.complete, MonthYear >= min(subset(dat.complete, footprint=="Sal
 dat.complete<-rbind(dat.complete, dat2)
 
 ##LOAD SFBBO WATERBIRD DATA
-wb.sfbbo<-"S:/Science/Waterbird/Databases - enter data here!/Cargill Pond Surveys/Cargill Pond Surveys.accdb" ##database filepath
+wb.sfbbo<-"S:/Science/Waterbird/Databases - enter data here!/Cargill Pond Surveys/Cargill Pond Surveys Backend/Cargill Pond Surveys Backend.accdb" ##database filepath
 
 con<-odbcConnectAccess2007(wb.sfbbo) ##open connection to database
 

@@ -98,6 +98,8 @@ if (exists(x="dat.complete")==F) {
 }
 head(dat.complete)
 data.sp<-dat.complete ##salt pond data
+##select only SFBBO data
+data.sp<-subset(dat.complete, Agency!="USGS" & YearID>2013)
 data.sp<-subset(data.sp, SpeciesCode %in% c("RNPH", "PHAL", "REPH", "WIPH") & footprint=="All") ##restrict to phal
 data.sp<-data.sp %>% group_by(MonthYear, Season, YearID, CountDate, Pond, Agency, SpeciesCode, StandardGuild, year, season.yr, complex, footprint) %>% dplyr::summarise(abun=sum(TotalAbundance, na.rm=T)) %>% data.frame() ##sum counts by species, date, and pond
 
@@ -120,10 +122,10 @@ data$source<-"eBird"
 phal<-rbind(phal, subset(data, select=c("scientific_name", "observation_count", "latitude", "longitude", "observation_date", "source")))
 
 #select data in south bay only
-phal.sb<-subset(phal, latitude >= 37.39884 & latitude <= 37.64138 & longitude >= -122.23960 & longitude <= -121.94052 & as.numeric(format(observation_date, "%Y")) > 2004)
+phal.sb<-subset(phal, latitude >= 37.39884 & latitude <= 37.64138 & longitude >= -122.23960 & longitude <= -121.94052 & as.numeric(format(observation_date, "%Y")) > 2005)
 
 ##number of observations of each species
-table(subset(phal.sb, observation_count>0 & source=="eBird")$scientific_name)
+table(subset(phal.sb, observation_count>0 & source=="SBSPRP")$scientific_name)
 
 ##select two species
 phal.sb<-subset(phal.sb, scientific_name %in% c("Phalaropus lobatus", "Phalaropus tricolor"))
@@ -193,10 +195,10 @@ for (j in 1:length(unique(phal.sb$scientific_name))) { ##for each species
   data.temp<-subset(data.temp, is.na(count)==F)
   ##fit model
   model.temp<-gam::gam(count ~ s(doy), data = data.temp)
-  data.temp$pred<-predict(model.temp, newdata=data.temp)
+  data.temp$pred<-predict(model.temp, newdata=data.temp) ##get model predictions at each data point
   data.pred<-rbind(data.pred, data.temp)
-  pred.temp<-data.frame(scientific_name=sp.temp, doy=min(data.temp$doy):max(data.temp$doy))
-  pred.temp$pred<-predict(model.temp, newdata=pred.temp)
+  pred.temp<-data.frame(scientific_name=sp.temp, doy=min(data.temp$doy):max(data.temp$doy)) ##create distrib of points to get predictions thorughout the range of dates
+  pred.temp$pred<-predict(model.temp, newdata=pred.temp) ##get model predictions across all days
   data.curve<-rbind(data.curve, pred.temp)
   
   ##estimate date of peak count
@@ -291,20 +293,33 @@ locs.ll<-SpatialPoints(locs.ll)
 proj4string(locs.ll) <- CRS("+init=epsg:4326")
 locs.utm<-spTransform(locs.ll, CRSobj = proj4string(land.clip)) ##reproject
 
-##map
 data.plot<-subset(phal.sb, as.numeric(observation_count)>0)
+
+##create KDE layer
+library(ks)#; library(raster)
+density<-kde(x = coordinates(locs.utm), w = data.plot$observation_count/sum(data.plot$observation_count)*nrow(data.plot))
+grid<-dim(0)
+for (j in 1:length(density$eval.points[[1]])) {
+  grid<-rbind(grid, data.frame(x=rep(density$eval.points[[1]][j], length(density$eval.points[[2]])), y = density$eval.points[[2]], z = density$estimate[j,]))
+}
+density.r<-raster::rasterFromXYZ(grid)
+
+##map
 map <- ggplot(data=data.plot) + coord_equal()
 map <- map + geom_polygon(aes(long, lat, group=group), data=land.clip, fill="light grey")
 map <- map + geom_polygon(data= ponds.df, aes(long, lat, group=group), color="black", fill="grey")
 #map <- map + geom_point(data = data.frame(coordinates(locs.utm), Species = phal.sb$scientific_name, Source=factor(phal.sb$source), Abundance=as.numeric(phal.sb$observation_count)), aes(longitude, latitude, color=Species, shape=Source, size=Abundance))
-map <- map + geom_point(data = data.frame(coordinates(locs.utm), Species = data.plot$scientific_name, Source=factor(data.plot$source), Abundance=as.numeric(data.plot$observation_count)), aes(longitude, latitude, size = Abundance), alpha=1/10, color="blue")
+#map <- map + geom_raster(data=grid, aes(x=x, y=y, fill=z))
+#map <- map + geom_tile(data=grid, aes(x=x, y=y, fill=z))
+#map <- map + scale_fill_gradient(high = "red", low = "yellow")
+map <- map + geom_point(data = data.frame(coordinates(locs.utm), Species = data.plot$scientific_name, Source=factor(data.plot$source), Abundance=as.numeric(data.plot$observation_count)), aes(longitude, latitude, size = Abundance), alpha=5/10, color="blue")
 map <- map + facet_grid(facets = Source~Species)
 map <- map + scale_size_area(max_size=8)
 map <- map + scale_x_continuous(name = "UTM E-W (m)", limits = c(summary(box)$bbox[1,1]-1, summary(box)$bbox[1,2]+1), expand = c(0,0))
 map <- map + scale_y_continuous(name = "UTM N-S (m)", limits = c(summary(box)$bbox[2,1]-1, summary(box)$bbox[2,2]+1), expand = c(0,0))
 map <- map + theme_classic() #+ theme(panel.background = element_rect(fill= "grey"))
 map <- map + geom_path(aes(long, lat), data = box)
-map <- map + annotate("text", label = "San Francisco\n Bay", x = 571500, y = 4160000, size = 3, colour = "dark blue")
+map <- map + annotate("text", label = "San Francisco\n Bay", x = 571500, y = 4160000, size = 2.5, colour = "dark blue")
 map <- map + theme(legend.position = "right")
 map <- map + labs(fill='Pond Complex') 
 map <- map + theme(axis.text.x=element_blank(), axis.text.y = element_blank())
@@ -319,11 +334,14 @@ data.pond<-data.sp.ll %>% group_by(Pond) %>% summarise(summed=sum(abun)) %>% dat
 data.pond<-data.pond[order(data.pond$summed, decreasing = T),]
 for (j in 1:nrow(data.pond)) {
   per.temp<-sum(data.pond$summed[1:j])/sum(data.pond$summed)
-  if (per.temp>0.95) {
+  if (per.temp>0.99) {
     survey.sites<-data.pond$Pond[1:j]
     break
   }
 }
+
+##show number of times phalaropes were observated at each pond each year
+table(subset(data.sp.ll, abun>0)$YearID, subset(data.sp.ll, abun>0)$Pond)
 
 ##map of sites to survey
 sites.poly<-rgdal::readOGR(dsn = "S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/PHAL survey/PHAL data", layer= "Phalarope survey sites")
@@ -367,10 +385,10 @@ map <- map + annotate("text", label = "San Francisco\n Bay", x = 571500, y = 416
 #map <- map + theme(axis.text.x=element_blank(), axis.text.y = element_blank())
 #map <- map + theme(axis.ticks=element_blank())
 map <- map + geom_text(aes(label = 1:nrow(all.sites.poly@data), x = V1, y = V2, fontface="bold"))
-map <- map + annotation_custom(gridExtra::tableGrob(legend.text[1:10,], theme=mytheme), xmin=579000, xmax=590700, ymin=4150000, ymax=4167000)
-map <- map + annotation_custom(gridExtra::tableGrob(legend.text[11:20,], theme=mytheme), xmin=585200, xmax=590700, ymin=4150000, ymax=4167000)
-map <- map + annotation_custom(gridExtra::tableGrob(legend.text[21:30,], theme=mytheme), xmin=591100, xmax=591200, ymin=4150000, ymax=4167000)
-map <- map + annotation_custom(gridExtra::tableGrob(legend.text[31:nrow(legend.text),], theme=mytheme), xmin=570000, xmax=576000, ymin=4140000, ymax=4149000)
+map <- map + annotation_custom(gridExtra::tableGrob(legend.text[1:(length(survey.sites)/3),], theme=mytheme), xmin=579000, xmax=590700, ymin=4150000, ymax=4167000)
+map <- map + annotation_custom(gridExtra::tableGrob(legend.text[(length(survey.sites)/3+1):(length(survey.sites)/3*2),], theme=mytheme), xmin=584700, xmax=590700, ymin=4150000, ymax=4167000)
+map <- map + annotation_custom(gridExtra::tableGrob(legend.text[(length(survey.sites)/3*2+1):(length(survey.sites)/3*3),], theme=mytheme), xmin=591100, xmax=591200, ymin=4150000, ymax=4167000)
+map <- map + annotation_custom(gridExtra::tableGrob(legend.text[(length(survey.sites)+1):nrow(legend.text),], theme=mytheme), xmin=570000, xmax=576000, ymin=4140000, ymax=4149000)
 map
 
 png(filename = str_c(file.path, "/survey.sites.png"), units="in", width=6.5, height=7,  res=400);print(map); dev.off()

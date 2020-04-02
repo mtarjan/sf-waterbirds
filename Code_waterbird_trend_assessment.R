@@ -218,3 +218,32 @@ fig <- fig + theme(legend.position = "bottom")
 fig
 
 png(filename = str_c(file.path, "/fig.cwb.png"), units="in", width=6.5*1.5, height=6.5*1.5,  res=200);print(fig); dev.off()
+
+
+##PLOT small shorebird spring trend at Eden Landing
+##prepared for 4/3/2020 meeting with funders. not needed for report
+data.test<-subset(dat, StandardGuild=="SMSHORE" & footprint =="All" & Season=="Spring")
+data.test <- data.test %>% group_by(MonthYear, Season, year, complex) %>% summarise(abun=sum(TotalAbundance)) %>% data.frame()
+
+complex_names <- c(
+  `A` = "Alviso",
+  `E` = "Eden Landing",
+  `M` = "Mowry",
+  `N` = "Newark",
+  `R` = "Ravenswood"
+)
+
+fig <- ggplot(data = data.test, aes(x=MonthYear, y=abun))
+fig <- fig + geom_point()
+fig <- fig + geom_smooth(method = "loess", se = F)
+fig <- fig + theme_classic()
+fig <- fig + facet_wrap(~complex, scales = "free", nrow=3, labeller = as_labeller(complex_names))
+fig <- fig + theme(axis.text.x = element_text(angle = 45, hjust=1, color="black"), axis.text.y = element_text(color="black"))
+fig <- fig + scale_x_datetime(date_breaks = "2 years", date_labels = "%Y")
+fig <- fig + scale_y_continuous(breaks = function(x) round(seq(from = 0,to = x[2]*1.2,by = (x[2]-0)/10),0), expand = c(0, 0))
+fig <- fig + theme(strip.background = element_rect(colour = "white", fill = "white"))
+fig <- fig + xlab("Year") + ylab("Number of Birds")
+fig <- fig + ggtitle("Small Shorebirds in Spring")
+fig
+
+#png(filename = str_c(file.path, "/fig.peep.spring.complex.trend.png"), units="in", width=6.5*1.5, height=6.5*1.5,  res=200);print(fig); dev.off()
