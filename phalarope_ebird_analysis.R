@@ -406,7 +406,7 @@ fig
 
 png(filename = str_c(file.path, "/eBird.trend.png"), units="in", width=6.5, height=4,  res=400);print(fig); dev.off()
 
-##GAM TRENDS
+##restrict ebird observations to those within the ponds
 ##assign location info to ebird data
 ##create spatial points for ebird data
 locs.temp<-subset(data, select=c("longitude", "latitude"))
@@ -416,7 +416,42 @@ locs.temp<-spTransform(locs.temp, CRSobj = proj4string(ponds.poly))
 ##check if they are within project polygons
 ebird.pond.locs<-subset(over(x= locs.temp, y = ponds.poly), select=c("Pond", "Complex"))
 ##add pond info to ebird data
-data<-cbind(data, ebird.pond.locs)
+ebird.pond<-cbind(data, ebird.pond.locs)
+ebird.pond<-subset(ebird.pond, is.na(Pond)==F & format(observation_date, "%Y")>2004) ##select ebird observations that are within the project footprint
 rm(locs.temp)
 
+##GAM TRENDS
 
+##create a model for all years pooled
+data.pred<-dim(0)
+data.curve<-dim(0)
+
+for (j in 2:length(unique(ebird.pond$scientific_name))) { ##for each species
+  sp.temp<-unique(ebird.pond$scientific_name)[j]
+  data.temp<-subset(ebird.pond, scientific_name==sp.temp)
+  ##add numeric count and remove NA observations
+  data.temp$count<-data.temp$observation_count
+  data.temp<-subset(data.temp, is.na(count)==F)
+  ##fit model
+  model.temp<-gam::gam(count ~ s(observation_date), data = data.temp)
+  data.temp$pred<-predict(model.temp, newdata=data.temp) ##get model predictions at each data point
+  data.pred<-rbind(data.pred, data.temp)
+  pred.temp<-data.frame(scientific_name=sp.temp, observation_date=min(data.temp$observation_date):max(data.temp$observation_date)) ##create distrib of points to get predictions thorughout the range of dates
+  pred.temp$pred<-predict(model.temp, newdata=pred.temp) ##get model predictions across all days
+  data.curve<-rbind(data.curve, pred.temp)
+}
+
+##plot counts with fitted curves
+fig <- ggplot(ebird.pond, aes(x= observation_date, y = observation_count, color = scientific_name))
+fig <- fig + geom_point() 
+fig <- fig + geom_line(data= data.pred, aes(x=observation_date, y=pred*100))
+fig <- fig + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5))
+fig <- fig + scale_x_date(date_breaks = "1 year", date_labels = "%Y")
+fig <- fig + xlab("Date") + ylab("Number of phalarope")
+fig <- fig + scale_y_continuous(expand = c(0,0), sec.axis = sec_axis(~ . /100, name = "Predicted count"))
+fig <- fig + labs(color="Species")
+fig <- fig + theme_classic()
+fig <- fig + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust =0.5))
+fig
+
+png(filename = str_c(file.path, "/phal.ebird.trend.png"), units="in", width=6.5, height=4,  res=400);print(fig); dev.off()
