@@ -164,6 +164,8 @@ ponds.df <- plyr::join(ponds.f, ponds.poly.df@data, by = "id")
 ponds.df$Pond<-gsub(pattern = "N4Aa", replacement = "N4AA", x = ponds.df$Pond)
 ponds.df$Pond<-gsub(pattern = "N4Ab", replacement = "N4AB", x = ponds.df$Pond)
 ponds.df$Pond<-gsub(pattern = "R5S", replacement = "RS5", x = ponds.df$Pond)
+pond.cat.E$Pond<-pond.cat.E$POND
+ponds.df$habitat<-plyr::join(ponds.df, subset(pond.cat.E, select=c(Pond, Planned_category)), by = "Pond")$Planned_category
 
 ##create a layer that identifies which ponds to include at each percent level
 ponds.per<-dim(0)
@@ -192,6 +194,28 @@ map <- map + theme(legend.position = "bottom")
 map
 
 png(filename = str_c(file.path, "/map.png"), units="in", width=6.5, height=7,  res=400);print(map); dev.off()
+
+##MAP OF PONDS BY TYPE
+map2 <- ggplot(data=ponds.df) + coord_equal()
+map2 <- map2 + geom_polygon(aes(long, lat, group=group), data=land.clip, fill="light grey")
+map2 <- map2 + geom_polygon(data= ponds.df, aes(long, lat, group=group, fill=factor(habitat)), color="black")
+map2 <- map2 + scale_x_continuous(name = "UTM E-W (m)", limits = c(summary(box)$bbox[1,1]-1, summary(box)$bbox[1,2]+1), expand = c(0,0))
+map2 <- map2 + scale_y_continuous(name = "UTM N-S (m)", limits = c(summary(box)$bbox[2,1]-1, summary(box)$bbox[2,2]+1), expand = c(0,0))
+map2 <- map2 + theme_classic() #+ theme(panel.background = element_rect(fill= "grey"))
+map2 <- map2 + geom_path(aes(long, lat), data = box)
+map2 <- map2 + annotate("text", label = "San Francisco\n Bay", x = 575700, y = 4154000, size = 2, colour = "dark blue")
+#map <- map + theme(legend.position = c(0.85, 0.85))
+#map <- map + facet_wrap(facets = ~frac)
+map2 <- map2 + labs(fill='Habitat') 
+#map <- map + theme(axis.text.x=element_text(angle = 90, vjust = 0.5, hjust = 1, size = 8), axis.text.y = element_text(size=8))
+map2 <- map2 + theme(axis.text.x=element_blank(), axis.text.y = element_blank())
+map2 <- map2 + theme(legend.position = "bottom")
+map2 <- map2 + scale_fill_manual(values = c("dark green", "blue", "pink"))
+map2
+
+##calculate ratio of tidal marsh to managed ponds
+pond.cat.area<-unique(subset(ponds.df, select=c(Pond, Area, habitat)))
+print(str_c(round(100*sum(subset(pond.cat.area, habitat=="Marsh")$Area)/(sum(subset(pond.cat.area, habitat=="Pond")$Area)+sum(subset(pond.cat.area, habitat=="Marsh")$Area)),0), ":", round(100*sum(subset(pond.cat.area, habitat=="Pond")$Area)/(sum(subset(pond.cat.area, habitat=="Pond")$Area)+sum(subset(pond.cat.area, habitat=="Marsh")$Area)),0)))
 
 ##TABLE OF POND TYPES INCLUDED IN SUBSET
 cat.table<-data.frame(Subset=frac.sub, Managed=NA, Breached=NA, Breached.PhaseII=NA, Reconfigured=NA, Reconfigured.PhaseII = NA, Salt.pond=NA)
@@ -789,3 +813,4 @@ png(filename = str_c(file.path, "/fig.grid.effect.png"), units="in", width=10, h
 ##test it
 duration.test<-t.test(duration.mins~grids, data= dat.sub)
 duration.test
+

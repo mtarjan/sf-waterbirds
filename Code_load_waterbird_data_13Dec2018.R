@@ -15,7 +15,7 @@ file.path<-str_c("figures.", Sys.Date())
 
 ##LOAD SALT POND DATA
 #wb<-"S:/Science/Waterbird/Databases - enter data here!/Cargill Pond Surveys/USGS data from Cheryl 29Jan2018/USGS_SFBBO_pond_data_03Jul2019.accdb" ##database filepath
-wb<-"S:/Science/Waterbird/Databases - enter data here!/Cargill Pond Surveys/USGS data from Cheryl 29Jan2018/USGS_SFBBO_pond_data_27Apr2020_NO_WQ.accdb" ##database filepath
+wb<-"S:/Science/Waterbird/Databases - enter data here!/Cargill Pond Surveys/USGS data from Cheryl 29Jan2018/USGS_SFBBO_pond_data_11Jun2020.accdb" ##database filepath
 
 con<-odbcConnectAccess2007(wb) ##open connection to database
 
