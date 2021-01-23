@@ -362,6 +362,7 @@ all.sites.poly<-rbind(all.sites.poly, sites.poly)
 ##add centroid for adding labels
 all.sites.poly@data<-cbind(all.sites.poly@data, as.data.frame(coordinates(all.sites.poly)))
 
+##make the map
 ##legend
 legend.text<-data.frame(id=1:nrow(all.sites.poly@data), equal="=",site=all.sites.poly@data$Site.Name)
 legend.text<-tidyr::unite(data = legend.text, col="legend", sep=" ")
@@ -392,6 +393,27 @@ map <- map + annotation_custom(gridExtra::tableGrob(legend.text[(length(survey.s
 map
 
 png(filename = str_c(file.path, "/survey.sites.png"), units="in", width=6.5, height=7,  res=400);print(map); dev.off()
+
+##SURVEY EFFORT
+##area/ acreage of all sites and acreage of survey sites
+site.area<-unique(subset(ponds.df, select=c(Pond, Area)))
+sum(site.area$Area)/4047 ##convert to acres
+sum(subset(site.area, Pond %in% survey.sites)$Area)/4047 ##convert to acres
+sum(sites.poly@data$Area)/4047
+
+##area of sites surveyed in 2020
+phal.counts<-gdata::read.xls("S:/Science/Waterbird/Program Folders (Gulls, SNPL, ADPP, etc)/Cargill Pond Surveys/PHAL survey/PHAL data/Phalarope Data all years.xlsx", sheet="Phalarope Data")
+phal.counts<-phal.counts[which(str_detect(phal.counts$Date, pattern = "2020")),]
+sites2020<-unique(phal.counts$Site.name)
+plot(all.sites.poly)
+plot(subset(all.sites.poly, Site.Name %in% sites2020), add=T, col="red")
+sum(subset(all.sites.poly, Site.Name %in% sites2020)$Area)/4047
+
+##acreage of phalarope habitats in all of SF Bay
+bay.habitats<-rgdal::readOGR(dsn = "S:/Science/GIS/EcoAtlas_v1.50b4__SFEI_1998_0/Modern Baylands", layer= "SFEI_modern_baylands_poly_with_crosswalk")
+plot(subset(bay.habitats, LEVEL4 %in% c("Storage or Treatment Basin", "Muted Tidal Marsh", "Inactive Salt Pond", "Diked Marsh", "Active Salt Pond")))
+##total area of suitable phal habitat in SF Bay
+sum(subset(bay.habitats, LEVEL4 %in% c("Storage or Treatment Basin", "Muted Tidal Marsh", "Inactive Salt Pond", "Diked Marsh", "Active Salt Pond"))$ACREAGE)
 
 ##eBird TRENDS OVER TIME
 data.plot<-subset(phal.sb, source=="eBird" & as.numeric(format(observation_date, "%Y")) < 2019 & format(observation_date, "%m") %in% c("06","07","08","09")) %>% group_by(scientific_name, year = as.numeric(format(observation_date, "%Y"))) %>% summarise(av = mean(as.numeric(observation_count), na.rm=T)) %>% data.frame() #mean ebird count
